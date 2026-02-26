@@ -1,7 +1,7 @@
 import { getArticles, getLatestArticle } from '@/lib/articles';
 import HomePage from '@/components/HomePage';
 
-export const revalidate = 60;
+export const dynamic = 'force-dynamic';
 
 export default function Page() {
   const hero    = getLatestArticle();

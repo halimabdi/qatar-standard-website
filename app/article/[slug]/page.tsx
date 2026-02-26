@@ -2,10 +2,11 @@ import { getArticleBySlug, getArticles, CATEGORIES } from '@/lib/articles';
 import ArticleDetail from '@/components/ArticleDetail';
 import { notFound } from 'next/navigation';
 
-export const revalidate = 300;
+export const dynamic = 'force-dynamic';
 
-export default function ArticlePage({ params }: { params: { slug: string } }) {
-  const article = getArticleBySlug(params.slug);
+export default async function ArticlePage({ params }: { params: Promise<{ slug: string }> }) {
+  const { slug } = await params;
+  const article = getArticleBySlug(slug);
   if (!article) notFound();
 
   const related = getArticles({ limit: 4, category: article.category })

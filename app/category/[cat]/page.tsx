@@ -2,27 +2,29 @@ import { getArticles, countArticles, CATEGORIES } from '@/lib/articles';
 import CategoryPage from '@/components/CategoryPage';
 import { notFound } from 'next/navigation';
 
-export const revalidate = 120;
+export const dynamic = 'force-dynamic';
 
-export default function Page({
+export default async function Page({
   params,
   searchParams,
 }: {
-  params: { cat: string };
-  searchParams: { page?: string };
+  params: Promise<{ cat: string }>;
+  searchParams: Promise<{ page?: string }>;
 }) {
-  if (!CATEGORIES[params.cat]) notFound();
+  const { cat } = await params;
+  const sp = await searchParams;
+  if (!CATEGORIES[cat]) notFound();
 
-  const page     = Math.max(1, parseInt(searchParams.page || '1'));
+  const page     = Math.max(1, parseInt(sp.page || '1'));
   const limit    = 12;
   const offset   = (page - 1) * limit;
-  const total    = countArticles(params.cat);
+  const total    = countArticles(cat);
   const pages    = Math.ceil(total / limit);
-  const articles = getArticles({ limit, offset, category: params.cat });
+  const articles = getArticles({ limit, offset, category: cat });
 
   return (
     <CategoryPage
-      cat={params.cat}
+      cat={cat}
       articles={articles}
       total={total}
       page={page}

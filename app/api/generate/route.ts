@@ -99,9 +99,11 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: 'title required' }, { status: 400 });
   }
 
+  const stripMd = (s: string) => s.replace(/^#+\s*/, '').replace(/\*\*/g, '').replace(/^["']|["']$/g, '').trim();
+
   const category = body.category || 'general';
-  const title_ar = body.title_ar || body.title;
-  const title_en = body.title_en || body.title;
+  const title_ar = stripMd(body.title_ar || body.title);
+  const title_en = stripMd(body.title_en || body.title);
   const slug = makeSlug(title_en);
 
   let body_ar = '';
