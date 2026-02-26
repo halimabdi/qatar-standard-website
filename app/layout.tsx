@@ -36,6 +36,12 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
           href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700;900&family=Inter:wght@400;500;600;700&display=swap"
           rel="stylesheet"
         />
+        {/* Google AdSense */}
+        <script
+          async
+          src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-REPLACE_WITH_YOUR_PUB_ID"
+          crossOrigin="anonymous"
+        />
       </head>
       <body className="antialiased bg-gray-50 font-sans">
         {/* Twitter banner masthead — scrolls away, not sticky */}
@@ -45,7 +51,8 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
             alt="Qatar Standard"
             width={1500}
             height={500}
-            className="w-full h-full object-cover object-center"
+            className="w-full h-full object-cover"
+            style={{ objectPosition: 'center 65%' }}
             priority
             unoptimized
           />
