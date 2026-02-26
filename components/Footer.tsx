@@ -34,6 +34,7 @@ export default function Footer() {
                 ['/category/economy', 'اقتصاد'],
                 ['/category/gulf', 'خليج'],
                 ['/category/politics', 'سياسة'],
+                ['/category/africa', 'أفريقيا'],
               ].map(([href, label]) => (
                 <li key={href}>
                   <Link href={href} className="hover:text-white transition-colors">{label}</Link>

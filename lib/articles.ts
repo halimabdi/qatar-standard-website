@@ -82,5 +82,6 @@ export const CATEGORIES: Record<string, string> = {
   politics:   'سياسة',
   gulf:       'خليج',
   media:      'إعلام',
+  africa:     'أفريقيا',
   turkey:     'تركيا',
 };

@@ -2,16 +2,16 @@ import type { Metadata } from "next";
 import "./globals.css";
 import Header from "@/components/Header";
 import Footer from "@/components/Footer";
+import { LanguageProvider } from "@/contexts/LanguageContext";
 
 export const metadata: Metadata = {
-  title: { default: "قطر ستاندرد | Qatar Standard", template: "%s | Qatar Standard" },
-  description: "موقع إخباري متخصص في الشأن القطري والخليجي والدبلوماسية الإقليمية",
+  title: { default: "Qatar Standard | قطر ستاندرد", template: "%s | Qatar Standard" },
+  description: "Qatar news, Gulf diplomacy, and Middle East analysis — in Arabic and English",
   metadataBase: new URL("https://qatar-standard.com"),
   openGraph: {
-    title: "قطر ستاندرد | Qatar Standard",
-    description: "أخبار قطر والخليج والدبلوماسية",
+    title: "Qatar Standard | قطر ستاندرد",
+    description: "Qatar news, Gulf diplomacy, and Middle East analysis",
     siteName: "Qatar Standard",
-    locale: "ar_QA",
     type: "website",
     images: [{ url: "/qatar-standard-logo.png", width: 500, height: 500 }],
   },
@@ -27,19 +27,21 @@ export const metadata: Metadata = {
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
-    <html lang="ar" dir="rtl">
+    <html lang="en">
       <head>
         <link rel="preconnect" href="https://fonts.googleapis.com" />
         <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="anonymous" />
         <link
-          href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700;900&display=swap"
+          href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700;900&family=Inter:wght@400;500;600;700&display=swap"
           rel="stylesheet"
         />
       </head>
-      <body className="antialiased bg-gray-50">
-        <Header />
-        <main className="min-h-screen">{children}</main>
-        <Footer />
+      <body className="antialiased bg-gray-50 font-sans">
+        <LanguageProvider>
+          <Header />
+          <main className="min-h-screen">{children}</main>
+          <Footer />
+        </LanguageProvider>
       </body>
     </html>
   );

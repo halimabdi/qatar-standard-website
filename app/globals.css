@@ -1,5 +1,21 @@
 @import "tailwindcss";
 
+@theme {
+  --color-maroon-50:  #fdf2f4;
+  --color-maroon-100: #fce7eb;
+  --color-maroon-200: #f9d0d8;
+  --color-maroon-300: #f4a9b8;
+  --color-maroon-400: #ec7490;
+  --color-maroon-500: #e04570;
+  --color-maroon-600: #c82554;
+  --color-maroon-700: #a81a43;
+  --color-maroon-800: #8b1538;
+  --color-maroon-900: #781333;
+  --color-maroon-950: #430518;
+  --color-gold:       #C8A96E;
+  --font-arabic:      'Cairo', sans-serif;
+}
+
 :root {
   --background: #fafafa;
   --foreground: #1a1a1a;
@@ -8,6 +24,12 @@
 body {
   background: var(--background);
   color: var(--foreground);
+  font-family: 'Inter', 'Cairo', Arial, sans-serif;
+}
+
+/* Arabic text */
+[lang="ar"] body,
+.arabic-text {
   font-family: 'Cairo', Arial, sans-serif;
 }
 
@@ -28,11 +50,20 @@ body {
 .scrollbar-hide::-webkit-scrollbar { display: none; }
 .scrollbar-hide { -ms-overflow-style: none; scrollbar-width: none; }
 
+/* Arabic prose */
 .prose-ar {
   font-family: 'Cairo', sans-serif;
   direction: rtl;
   text-align: right;
   line-height: 2;
-  font-size: 1.05rem;
 }
 .prose-ar p { margin-bottom: 1.25rem; }
+
+/* English prose */
+.prose-en {
+  font-family: 'Inter', sans-serif;
+  direction: ltr;
+  text-align: left;
+  line-height: 1.75;
+}
+.prose-en p { margin-bottom: 1.25rem; }

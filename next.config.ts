@@ -9,9 +9,7 @@ const nextConfig: NextConfig = {
     ],
   },
   // better-sqlite3 is a native module — don't bundle it
-  experimental: {
-    serverComponentsExternalPackages: ["better-sqlite3"],
-  },
+  serverExternalPackages: ["better-sqlite3"],
 };
 
 export default nextConfig;
