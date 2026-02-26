@@ -3,6 +3,7 @@ import "./globals.css";
 import Header from "@/components/Header";
 import Footer from "@/components/Footer";
 import { LanguageProvider } from "@/contexts/LanguageContext";
+import Image from "next/image";
 
 export const metadata: Metadata = {
   title: { default: "Qatar Standard | قطر ستاندرد", template: "%s | Qatar Standard" },
@@ -37,6 +38,18 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         />
       </head>
       <body className="antialiased bg-gray-50 font-sans">
+        {/* Twitter banner masthead — scrolls away, not sticky */}
+        <div className="w-full overflow-hidden bg-maroon-900" style={{ height: '120px' }}>
+          <Image
+            src="/twitter-banner.jpg"
+            alt="Qatar Standard"
+            width={1500}
+            height={500}
+            className="w-full h-full object-cover object-center"
+            priority
+            unoptimized
+          />
+        </div>
         <LanguageProvider>
           <Header />
           <main className="min-h-screen">{children}</main>

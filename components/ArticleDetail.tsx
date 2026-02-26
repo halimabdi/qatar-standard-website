@@ -1,6 +1,6 @@
 'use client';
 import type { Article } from '@/lib/articles';
-import { CATEGORIES_AR, CATEGORIES_EN } from '@/lib/categories';
+import { CATEGORIES_AR, CATEGORIES_EN, getDefaultImage } from '@/lib/categories';
 import ArticleCard from './ArticleCard';
 import Link from 'next/link';
 import { useLang } from '@/contexts/LanguageContext';
@@ -14,6 +14,36 @@ function renderMarkdown(text: string): string {
   }
 }
 
+function formatDateTime(dateStr: string, lang: 'en' | 'ar'): string {
+  const d = new Date(dateStr);
+  if (lang === 'ar') {
+    return d.toLocaleString('ar-QA', {
+      weekday: 'long', year: 'numeric', month: 'long', day: 'numeric',
+      hour: '2-digit', minute: '2-digit', timeZone: 'Asia/Qatar',
+    }) + ' بتوقيت قطر';
+  }
+  return d.toLocaleString('en-US', {
+    weekday: 'long', year: 'numeric', month: 'long', day: 'numeric',
+    hour: '2-digit', minute: '2-digit', timeZone: 'Asia/Qatar',
+  }) + ' AST';
+}
+
+function sourceLabel(source: string, source_url: string | null): { label: string; url: string | null } | null {
+  if (!source || source === 'manual') return null;
+  const map: Record<string, string> = {
+    bot:         'Qatar Standard',
+    analysis:    'Qatar Standard Analysis',
+    ghost:       'Qatar Standard',
+    aljazeera:   'Al Jazeera',
+    anadolu:     'Anadolu Agency',
+    reuters:     'Reuters',
+    middleeasteye: 'Middle East Eye',
+    qna:         'Qatar News Agency',
+  };
+  const label = map[source] || source;
+  return { label, url: source_url };
+}
+
 interface Props {
   article: Article;
   related: Article[];
@@ -23,26 +53,48 @@ export default function ArticleDetail({ article, related }: Props) {
   const { lang, setLang } = useLang();
   const isAr = lang === 'ar';
 
+  const cleanMd  = (s: string) => s.replace(/\*\*/g, '').replace(/^#+\s*/gm, '').trim();
   const catLabel = isAr ? (CATEGORIES_AR[article.category] || article.category) : (CATEGORIES_EN[article.category] || article.category);
-  const title    = isAr ? (article.title_ar || article.title_en || '') : (article.title_en || article.title_ar || '');
+  const title    = cleanMd(isAr ? (article.title_ar || article.title_en || '') : (article.title_en || article.title_ar || ''));
   const body     = isAr ? (article.body_ar || article.body_en || '') : (article.body_en || article.body_ar || '');
   const dir      = isAr ? 'rtl' : 'ltr';
 
-  const publishedDate = new Date(article.published_at).toLocaleDateString(
-    isAr ? 'ar-QA' : 'en-US',
-    { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' }
-  );
+  const publishedDate = formatDateTime(article.published_at, lang);
+  const bodyHtml      = renderMarkdown(body);
 
-  const bodyHtml = renderMarkdown(body);
+  const fallbackImg = getDefaultImage(article.category, article.source);
+  const heroImg     = article.image_url || fallbackImg;
 
-  // The alternate body
-  const altBody  = isAr ? (article.body_en || '') : (article.body_ar || '');
-  const altTitle = isAr ? (article.title_en || '') : (article.title_ar || '');
-  const altDir   = isAr ? 'ltr' : 'rtl';
-  const altParagraphs = altBody.split('\n').filter(Boolean);
+  const src       = sourceLabel(article.source, article.source_url);
+  const altBody   = isAr ? (article.body_en || '') : (article.body_ar || '');
+  const altTitle  = isAr ? (article.title_en || '') : (article.title_ar || '');
+  const altDir    = isAr ? 'ltr' : 'rtl';
+  const altParas  = altBody.split('\n').filter(Boolean);
+
+  // JSON-LD for Google News / Search
+  const jsonLd = {
+    '@context': 'https://schema.org',
+    '@type': 'NewsArticle',
+    headline: title,
+    description: article.excerpt_en || article.excerpt_ar || '',
+    image: heroImg.startsWith('/') ? `https://qatar-standard.com${heroImg}` : heroImg,
+    datePublished: article.published_at,
+    dateModified: article.published_at,
+    author: { '@type': 'Organization', name: 'Qatar Standard' },
+    publisher: {
+      '@type': 'Organization',
+      name: 'Qatar Standard',
+      logo: { '@type': 'ImageObject', url: 'https://qatar-standard.com/qatar-standard-logo.png' },
+    },
+    mainEntityOfPage: { '@type': 'WebPage', '@id': `https://qatar-standard.com/article/${article.slug}` },
+    inLanguage: isAr ? 'ar' : 'en',
+  };
 
   return (
     <div className="max-w-7xl mx-auto px-4 py-8">
+      {/* JSON-LD */}
+      <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }} />
+
       <div className="grid grid-cols-1 lg:grid-cols-4 gap-8">
 
         {/* Article */}
@@ -75,7 +127,7 @@ export default function ArticleDetail({ article, related }: Props) {
             {title}
           </h1>
 
-          {/* Meta */}
+          {/* Meta row */}
           <div className="flex flex-wrap items-center gap-3 text-sm text-gray-500 mb-6 border-b border-gray-200 pb-4">
             {article.speaker_name && (
               <span className="font-semibold text-gray-700">
@@ -83,15 +135,25 @@ export default function ArticleDetail({ article, related }: Props) {
                 {article.speaker_title && ` — ${article.speaker_title}`}
               </span>
             )}
-            <span>{publishedDate}</span>
+            <span className="text-xs">{publishedDate}</span>
+            {src && (
+              <span className="text-xs text-gray-400">
+                {isAr ? 'المصدر: ' : 'Source: '}
+                {src.url ? (
+                  <a href={src.url} target="_blank" rel="noopener noreferrer" className="text-maroon-700 hover:underline">
+                    {src.label}
+                  </a>
+                ) : (
+                  <span className="text-maroon-700">{src.label}</span>
+                )}
+              </span>
+            )}
           </div>
 
           {/* Hero image */}
-          {article.image_url && (
-            <div className="rounded-xl overflow-hidden mb-6 aspect-[16/9] bg-gray-100">
-              <img src={article.image_url} alt={title} className="w-full h-full object-cover" />
-            </div>
-          )}
+          <div className="rounded-xl overflow-hidden mb-6 aspect-[16/9] bg-gray-100">
+            <img src={heroImg} alt={title} className="w-full h-full object-cover" />
+          </div>
 
           {/* Body */}
           <div
@@ -101,7 +163,7 @@ export default function ArticleDetail({ article, related }: Props) {
           />
 
           {/* Alternate language section */}
-          {altParagraphs.length > 0 && (
+          {altParas.length > 0 && (
             <div className="border-t border-gray-200 pt-6 mt-6">
               <div className="flex items-center justify-between mb-4">
                 <h2 className="text-sm font-bold uppercase tracking-widest text-gray-400">
@@ -115,14 +177,12 @@ export default function ArticleDetail({ article, related }: Props) {
                 </button>
               </div>
               {altTitle && (
-                <h3 className="text-xl font-bold text-gray-700 mb-3" dir={altDir}>{altTitle}</h3>
+                <h3 className="text-xl font-bold text-gray-700 mb-3" dir={altDir}>{cleanMd(altTitle)}</h3>
               )}
-              {altParagraphs.slice(0, 3).map((p, i) => (
-                <p key={i} className="mb-4 text-gray-600 leading-relaxed" dir={altDir}>
-                  {p}
-                </p>
+              {altParas.slice(0, 3).map((p, i) => (
+                <p key={i} className="mb-4 text-gray-600 leading-relaxed" dir={altDir}>{p}</p>
               ))}
-              {altParagraphs.length > 3 && (
+              {altParas.length > 3 && (
                 <button
                   onClick={() => setLang(isAr ? 'en' : 'ar')}
                   className="text-sm text-maroon-800 hover:underline font-medium"
@@ -136,7 +196,7 @@ export default function ArticleDetail({ article, related }: Props) {
           {/* Source tweet */}
           {(article.tweet_ar || article.tweet_en) && (
             <div className="mt-6 p-4 bg-gray-50 border border-gray-200 rounded-lg">
-              <p className="text-xs text-gray-400 mb-1">{isAr ? 'المصدر' : 'Source'}</p>
+              <p className="text-xs text-gray-400 mb-1">{isAr ? 'المصدر' : 'Source tweet'}</p>
               <p className="text-sm text-gray-700" dir={dir}>
                 {isAr ? (article.tweet_ar || article.tweet_en) : (article.tweet_en || article.tweet_ar)}
               </p>

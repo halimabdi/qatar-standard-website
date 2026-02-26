@@ -31,6 +31,8 @@ function getDb(): Database.Database {
       category      TEXT    DEFAULT 'general',
       image_url     TEXT,
       source        TEXT    DEFAULT 'manual',
+      source_url    TEXT,
+      content_hash  TEXT,
       tweet_ar      TEXT,
       tweet_en      TEXT,
       speaker_name  TEXT,
@@ -39,10 +41,19 @@ function getDb(): Database.Database {
       created_at    DATETIME DEFAULT CURRENT_TIMESTAMP
     );
 
-    CREATE INDEX IF NOT EXISTS idx_articles_category    ON articles(category);
+    CREATE INDEX IF NOT EXISTS idx_articles_category     ON articles(category);
     CREATE INDEX IF NOT EXISTS idx_articles_published_at ON articles(published_at DESC);
-    CREATE INDEX IF NOT EXISTS idx_articles_slug        ON articles(slug);
+    CREATE INDEX IF NOT EXISTS idx_articles_slug         ON articles(slug);
   `);
+
+  // Migrate existing tables — add new columns if missing
+  const cols = (db.prepare(`PRAGMA table_info(articles)`).all() as Array<{ name: string }>).map(c => c.name);
+  if (!cols.includes('source_url'))   db.exec(`ALTER TABLE articles ADD COLUMN source_url TEXT`);
+  if (!cols.includes('content_hash')) db.exec(`ALTER TABLE articles ADD COLUMN content_hash TEXT`);
+
+  // Unique index for deduplication — ignore if already exists
+  try { db.exec(`CREATE UNIQUE INDEX idx_articles_content_hash ON articles(content_hash) WHERE content_hash IS NOT NULL`); } catch {}
+  try { db.exec(`CREATE INDEX idx_articles_source_url ON articles(source_url) WHERE source_url IS NOT NULL`); } catch {}
 
   return db;
 }

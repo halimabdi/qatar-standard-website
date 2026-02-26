@@ -1,10 +1,12 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { createArticle } from '@/lib/articles';
+import { createArticle, getArticleBySourceUrl, getArticleByContentHash, makeContentHash, getDefaultImage } from '@/lib/articles';
 import slugify from 'slugify';
 
 export const dynamic = 'force-dynamic';
 
 const API_KEY = process.env.WEBSITE_API_KEY || 'qatar-standard-2024';
+
+// ── Helpers ──────────────────────────────────────────────────────────────────
 
 function makeSlug(title: string): string {
   const base = slugify(title, { lower: true, strict: true, locale: 'en' }).slice(0, 60);
@@ -12,62 +14,167 @@ function makeSlug(title: string): string {
   return `${base || 'article'}-${rand}`;
 }
 
-async function expandToArticle(opts: {
+const stripMd = (s: string) =>
+  s.replace(/^#+\s*/gm, '').replace(/\*\*/g, '').replace(/^["']|["']$/g, '').trim();
+
+// ── Agent 1: Research — fetch & extract source article content ────────────────
+
+async function researchAgent(sourceUrl?: string | null): Promise<string> {
+  if (!sourceUrl) return '';
+  try {
+    const res = await fetch(sourceUrl, {
+      signal: AbortSignal.timeout(8000),
+      headers: { 'User-Agent': 'Mozilla/5.0 (compatible; QatarStandard/1.0)' },
+    });
+    if (!res.ok) return '';
+    const html = await res.text();
+    // Extract readable text — strip tags, collapse whitespace
+    const text = html
+      .replace(/<script[\s\S]*?<\/script>/gi, '')
+      .replace(/<style[\s\S]*?<\/style>/gi, '')
+      .replace(/<[^>]+>/g, ' ')
+      .replace(/\s{2,}/g, ' ')
+      .slice(0, 4000)
+      .trim();
+    return text;
+  } catch {
+    return '';
+  }
+}
+
+// ── Agent 2: SerpAPI image fetch ──────────────────────────────────────────────
+
+async function fetchSerpImage(query: string): Promise<string | null> {
+  const serpKey = process.env.SERP_API_KEY;
+  if (!serpKey) return null;
+  try {
+    const url = `https://serpapi.com/search.json?engine=google&q=${encodeURIComponent(query)}&tbm=nws&num=10&api_key=${serpKey}`;
+    const res = await fetch(url, { signal: AbortSignal.timeout(10000) });
+    if (!res.ok) return null;
+    const data = await res.json();
+    const results: Array<{ thumbnail?: string }> = data?.news_results || [];
+    for (const r of results) {
+      if (r.thumbnail?.startsWith('http')) return r.thumbnail;
+    }
+    return null;
+  } catch {
+    return null;
+  }
+}
+
+// ── Agent 3 + 4: Writers — Arabic & English ───────────────────────────────────
+
+async function writerAgents(opts: {
+  title: string;
   tweet_ar?: string;
   tweet_en?: string;
-  title: string;
   context?: string;
+  sourceContent?: string;
   speaker?: { name: string; title: string } | null;
   category: string;
-}) {
-  const { tweet_ar, tweet_en, title, context, speaker, category } = opts;
+}): Promise<{ body_ar: string; body_en: string }> {
+  const { title, tweet_ar, tweet_en, context, sourceContent, speaker, category } = opts;
   const openaiKey = process.env.OPENAI_API_KEY;
   if (!openaiKey) throw new Error('No OPENAI_API_KEY');
 
-  const speakerNote = speaker ? `Speaker: ${speaker.name}${speaker.title ? ` (${speaker.title})` : ''}` : '';
-  const contextNote = context ? `Context: ${context}` : '';
+  const speakerNote = speaker ? `المتحدث: ${speaker.name}${speaker.title ? ` (${speaker.title})` : ''}` : '';
+  const speakerNoteEN = speaker ? `Speaker: ${speaker.name}${speaker.title ? ` (${speaker.title})` : ''}` : '';
+  const sourceNote = sourceContent ? `\n\nمحتوى الخبر الأصلي:\n${sourceContent.slice(0, 2000)}` : '';
+  const sourceNoteEN = sourceContent ? `\n\nSource article content:\n${sourceContent.slice(0, 2000)}` : '';
+  const contextNote = context ? `السياق: ${context}` : '';
+  const contextNoteEN = context ? `Context: ${context}` : '';
+
+  const call = (messages: object[]) =>
+    fetch('https://api.openai.com/v1/chat/completions', {
+      method: 'POST',
+      headers: { Authorization: `Bearer ${openaiKey}`, 'Content-Type': 'application/json' },
+      body: JSON.stringify({ model: 'gpt-4o', temperature: 0.35, messages }),
+    }).then(r => r.json()).then(d => d.choices?.[0]?.message?.content?.trim() || '');
 
   const [arRes, enRes] = await Promise.all([
-    // Arabic article
-    fetch('https://api.openai.com/v1/chat/completions', {
-      method: 'POST',
-      headers: { 'Authorization': `Bearer ${openaiKey}`, 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        model: 'gpt-4o',
-        temperature: 0.4,
-        messages: [{
-          role: 'system',
-          content: `أنت محرر في موقع قطر ستاندرد الإخباري. اكتب مقالاً إخبارياً باللغة العربية الفصحى بناءً على التغريدة والسياق المعطى.
-المقال يجب أن يكون بين 400 و600 كلمة. يتضمن: مقدمة قوية، شرح للسياق والأهمية، تفاصيل وخلفية، وخلاصة.
-لا تستخدم كلمات ذكاء اصطناعي مثل: يُجسّد، يُرسّخ، يُسلّط الضوء، مما يعكس.
-الأسلوب: احترافي، محايد، متوازن مع منظور قطري.`,
-        }, {
-          role: 'user',
-          content: `عنوان الخبر: ${title}\n${speakerNote}\n${contextNote}\nالتغريدة: ${tweet_ar || tweet_en || title}\n\nاكتب المقال:`,
-        }],
-      }),
-    }).then(r => r.json()).then(d => d.choices?.[0]?.message?.content?.trim() || ''),
-
-    // English article
-    fetch('https://api.openai.com/v1/chat/completions', {
-      method: 'POST',
-      headers: { 'Authorization': `Bearer ${openaiKey}`, 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        model: 'gpt-4o',
-        temperature: 0.4,
-        messages: [{
-          role: 'system',
-          content: `You are an editor at Qatar Standard news website. Write a professional news article in English based on the tweet and context provided. 400–600 words. Include: strong lede, context and significance, details and background, conclusion. Pro-Qatar perspective. No AI filler phrases.`,
-        }, {
-          role: 'user',
-          content: `Title: ${title}\n${speakerNote}\n${contextNote}\nTweet: ${tweet_en || tweet_ar || title}\n\nWrite the article:`,
-        }],
-      }),
-    }).then(r => r.json()).then(d => d.choices?.[0]?.message?.content?.trim() || ''),
+    call([
+      {
+        role: 'system',
+        content: `أنت محرر أول في موقع قطر ستاندرد الإخباري. اكتب مقالاً إخبارياً احترافياً باللغة العربية الفصحى.
+القواعد:
+- 400 إلى 600 كلمة
+- مقدمة قوية تلخص الخبر في جملة واحدة
+- فقرة للسياق والأهمية
+- تفاصيل وأرقام ومعلومات محددة من المصدر
+- خلاصة بمنظور قطري
+- لا تستخدم: يُجسّد، يُرسّخ، يُسلّط الضوء، مما يعكس، في ظل، تجدر الإشارة
+- لا تذكر أنك ذكاء اصطناعي
+- اكتب الفقرات فقط بدون عناوين`,
+      },
+      {
+        role: 'user',
+        content: `عنوان: ${title}\n${speakerNote}\n${contextNote}\nالتغريدة: ${tweet_ar || tweet_en || title}${sourceNote}\n\nاكتب المقال:`,
+      },
+    ]),
+    call([
+      {
+        role: 'system',
+        content: `You are a senior editor at Qatar Standard news website. Write a professional news article in English.
+Rules:
+- 400 to 600 words
+- Strong lede summarizing the news in one sentence
+- Paragraph on context and significance
+- Specific details, numbers, and facts from the source
+- Conclusion with Qatar/Gulf perspective
+- No AI filler phrases: "it is worth noting", "in light of", "this reflects", "underscores"
+- Write paragraphs only, no headers or bullet points`,
+      },
+      {
+        role: 'user',
+        content: `Title: ${title}\n${speakerNoteEN}\n${contextNoteEN}\nTweet: ${tweet_en || tweet_ar || title}${sourceNoteEN}\n\nWrite the article:`,
+      },
+    ]),
   ]);
 
   return { body_ar: arRes, body_en: enRes };
 }
+
+// ── Agent 5: Editor — quality pass ────────────────────────────────────────────
+
+async function editorAgent(body_ar: string, body_en: string): Promise<{ body_ar: string; body_en: string }> {
+  const openaiKey = process.env.OPENAI_API_KEY;
+  if (!openaiKey || !body_ar || !body_en) return { body_ar, body_en };
+
+  try {
+    const call = (messages: object[]) =>
+      fetch('https://api.openai.com/v1/chat/completions', {
+        method: 'POST',
+        headers: { Authorization: `Bearer ${openaiKey}`, 'Content-Type': 'application/json' },
+        body: JSON.stringify({ model: 'gpt-4o-mini', temperature: 0.2, messages }),
+      }).then(r => r.json()).then(d => d.choices?.[0]?.message?.content?.trim() || '');
+
+    const [edited_ar, edited_en] = await Promise.all([
+      call([
+        {
+          role: 'system',
+          content: `أنت مدقق لغوي. راجع المقال العربي وأصلح: أي تعابير ذكاء اصطناعي مبتذلة، تكرار، وعناوين مرقّمة. أعد النص فقط بدون تعليق.`,
+        },
+        { role: 'user', content: body_ar },
+      ]),
+      call([
+        {
+          role: 'system',
+          content: `You are a copy editor. Review the English article and fix: any AI clichés, repetition, numbered headers. Return only the cleaned text without comment.`,
+        },
+        { role: 'user', content: body_en },
+      ]),
+    ]);
+
+    return {
+      body_ar: edited_ar || body_ar,
+      body_en: edited_en || body_en,
+    };
+  } catch {
+    return { body_ar, body_en };
+  }
+}
+
+// ── Main POST handler ─────────────────────────────────────────────────────────
 
 export async function POST(req: NextRequest) {
   const auth = req.headers.get('x-api-key') || req.headers.get('authorization')?.replace('Bearer ', '');
@@ -83,6 +190,7 @@ export async function POST(req: NextRequest) {
     tweet_en?: string;
     context?: string;
     image_url?: string;
+    source_url?: string;
     speaker?: { name: string; title: string } | null;
     category?: string;
     source?: string;
@@ -99,34 +207,97 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: 'title required' }, { status: 400 });
   }
 
-  const stripMd = (s: string) => s.replace(/^#+\s*/, '').replace(/\*\*/g, '').replace(/^["']|["']$/g, '').trim();
+  const category   = body.category || 'general';
+  const source     = body.source || 'bot';
+  const title_ar   = stripMd(body.title_ar || body.title);
+  const title_en   = stripMd(body.title_en || body.title);
+  const source_url = body.source_url || null;
 
-  const category = body.category || 'general';
-  const title_ar = stripMd(body.title_ar || body.title);
-  const title_en = stripMd(body.title_en || body.title);
+  // ── Deduplication ────────────────────────────────────────────────────────
+  const contentHash = makeContentHash(title_en, source_url);
+
+  if (source_url) {
+    const existing = getArticleBySourceUrl(source_url);
+    if (existing) {
+      return NextResponse.json({ success: true, slug: existing.slug, id: existing.id, duplicate: true });
+    }
+  }
+
+  const hashExisting = getArticleByContentHash(contentHash);
+  if (hashExisting) {
+    return NextResponse.json({ success: true, slug: hashExisting.slug, id: hashExisting.id, duplicate: true });
+  }
+
+  // ── Agent pipeline ────────────────────────────────────────────────────────
   const slug = makeSlug(title_en);
 
   let body_ar = '';
   let body_en = '';
 
-  try {
-    const expanded = await expandToArticle({
-      tweet_ar: body.tweet_ar,
-      tweet_en: body.tweet_en,
-      title: body.title,
-      context: body.context,
-      speaker: body.speaker,
-      category,
-    });
-    body_ar = expanded.body_ar;
-    body_en = expanded.body_en;
-  } catch (err) {
-    console.error('[generate] GPT-4o failed:', err);
-    body_ar = body.tweet_ar || body.title;
-    body_en = body.tweet_en || body.title;
+  // Try CrewAI service first (if configured), then fall back to built-in pipeline
+  const crewaiUrl = process.env.CREWAI_URL; // e.g. http://localhost:8001
+
+  if (crewaiUrl) {
+    try {
+      const crewRes = await fetch(`${crewaiUrl}/generate`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'x-api-key': API_KEY },
+        body: JSON.stringify({
+          title:      body.title,
+          tweet_ar:   body.tweet_ar,
+          tweet_en:   body.tweet_en,
+          source_url,
+          context:    body.context,
+          category,
+          speaker:    body.speaker,
+        }),
+        signal: AbortSignal.timeout(120000),
+      });
+      if (crewRes.ok) {
+        const crewData = await crewRes.json();
+        body_ar  = crewData.body_ar  || '';
+        body_en  = crewData.body_en  || '';
+        console.log('[generate] ✓ CrewAI pipeline used');
+      }
+    } catch (err) {
+      console.warn('[generate] CrewAI unavailable, falling back to built-in pipeline');
+    }
   }
 
-  // Excerpt = first 2 sentences
+  if (!body_ar || !body_en) {
+    try {
+      // Agent 1: Research — fetch source article content
+      const sourceContent = await researchAgent(source_url);
+
+      // Agents 3+4: Write Arabic + English
+      const written = await writerAgents({
+        title:         body.title,
+        tweet_ar:      body.tweet_ar,
+        tweet_en:      body.tweet_en,
+        context:       body.context,
+        sourceContent,
+        speaker:       body.speaker,
+        category,
+      });
+
+      // Agent 5: Edit — quality pass
+      const edited = await editorAgent(written.body_ar, written.body_en);
+      body_ar = edited.body_ar;
+      body_en = edited.body_en;
+    } catch (err) {
+      console.error('[generate] Pipeline failed:', err);
+      body_ar = body.tweet_ar || body.title;
+      body_en = body.tweet_en || body.title;
+    }
+  }
+
+  // ── Image ────────────────────────────────────────────────────────────────
+  let image_url: string | null = body.image_url || null;
+  if (!image_url) {
+    image_url = await fetchSerpImage(`${title_en} ${category}`) || getDefaultImage(category, source);
+  }
+
+  // ── Excerpts ─────────────────────────────────────────────────────────────
   const excerpt_ar = body_ar.split(/[.!؟]/)[0]?.trim() || '';
   const excerpt_en = body_en.split(/[.!]/)[0]?.trim() || '';
 
@@ -139,13 +310,15 @@ export async function POST(req: NextRequest) {
     excerpt_ar,
     excerpt_en,
     category,
-    image_url: body.image_url || null,
-    source: body.source || 'bot',
-    tweet_ar: body.tweet_ar || null,
-    tweet_en: body.tweet_en || null,
-    speaker_name: body.speaker?.name || null,
+    image_url,
+    source,
+    source_url,
+    content_hash: contentHash,
+    tweet_ar:     body.tweet_ar || null,
+    tweet_en:     body.tweet_en || null,
+    speaker_name:  body.speaker?.name  || null,
     speaker_title: body.speaker?.title || null,
-    published_at: body.published_at || new Date().toISOString(),
+    published_at:  body.published_at || new Date().toISOString(),
   });
 
   return NextResponse.json({ success: true, slug: article.slug, id: article.id }, { status: 201 });

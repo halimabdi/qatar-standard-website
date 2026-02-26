@@ -1,0 +1,4 @@
+User-agent: *
+Allow: /
+
+Sitemap: https://qatar-standard.com/sitemap.xml

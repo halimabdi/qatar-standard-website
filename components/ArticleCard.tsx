@@ -1,7 +1,7 @@
 'use client';
 import Link from 'next/link';
 import type { Article } from '@/lib/articles';
-import { CATEGORIES_AR, CATEGORIES_EN } from '@/lib/categories';
+import { CATEGORIES_AR, CATEGORIES_EN, getDefaultImage } from '@/lib/categories';
 import { useLang } from '@/contexts/LanguageContext';
 
 function timeAgo(dateStr: string, lang: 'en' | 'ar'): string {
@@ -31,8 +31,10 @@ export default function ArticleCard({ article, size = 'md' }: Props) {
   const { lang } = useLang();
   const isAr = lang === 'ar';
 
-  const title   = isAr ? (article.title_ar || article.title_en || '') : (article.title_en || article.title_ar || '');
-  const excerpt = isAr ? (article.excerpt_ar || article.excerpt_en || '') : (article.excerpt_en || article.excerpt_ar || '');
+  const cleanMd    = (s: string) => s.replace(/\*\*/g, '').replace(/^#+\s*/gm, '').trim();
+  const fallbackImg = getDefaultImage(article.category, article.source);
+  const title   = cleanMd(isAr ? (article.title_ar || article.title_en || '') : (article.title_en || article.title_ar || ''));
+  const excerpt = cleanMd(isAr ? (article.excerpt_ar || article.excerpt_en || '') : (article.excerpt_en || article.excerpt_ar || ''));
   const catLabel = isAr ? (CATEGORIES_AR[article.category] || article.category) : (CATEGORIES_EN[article.category] || article.category);
   const timeStr = timeAgo(article.published_at, lang);
   const dir = isAr ? 'rtl' : 'ltr';
@@ -41,17 +43,11 @@ export default function ArticleCard({ article, size = 'md' }: Props) {
     return (
       <Link href={`/article/${article.slug}`} className="group block">
         <div className="relative overflow-hidden rounded-lg bg-gray-100 aspect-[16/9] mb-4">
-          {article.image_url ? (
-            <img
-              src={article.image_url}
-              alt={title}
-              className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
-            />
-          ) : (
-            <div className="w-full h-full bg-gradient-to-br from-maroon-800 to-maroon-600 flex items-center justify-center">
-              <span className="text-white/20 text-6xl font-black select-none">QS</span>
-            </div>
-          )}
+          <img
+            src={article.image_url || fallbackImg}
+            alt={title}
+            className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
+          />
           <span className="absolute top-3 left-3 bg-maroon-800 text-white text-xs px-2 py-1 rounded font-medium">
             {catLabel}
           </span>
@@ -80,11 +76,9 @@ export default function ArticleCard({ article, size = 'md' }: Props) {
   if (size === 'sm') {
     return (
       <Link href={`/article/${article.slug}`} className="group flex gap-3 py-3 border-b border-gray-100 last:border-0">
-        {article.image_url && (
-          <div className="relative overflow-hidden rounded w-20 h-16 shrink-0 bg-gray-100">
-            <img src={article.image_url} alt={title} className="w-full h-full object-cover group-hover:scale-105 transition-transform" />
-          </div>
-        )}
+        <div className="relative overflow-hidden rounded w-20 h-16 shrink-0 bg-gray-100">
+          <img src={article.image_url || fallbackImg} alt={title} className="w-full h-full object-cover group-hover:scale-105 transition-transform" />
+        </div>
         <div className="flex-1 min-w-0">
           <span className="text-xs text-maroon-700 font-medium">{catLabel}</span>
           <h3 className="text-sm font-bold text-gray-900 leading-snug group-hover:text-maroon-800 transition-colors line-clamp-2 mt-0.5" dir={dir}>
@@ -99,17 +93,11 @@ export default function ArticleCard({ article, size = 'md' }: Props) {
   return (
     <Link href={`/article/${article.slug}`} className="group block">
       <div className="relative overflow-hidden rounded-lg bg-gray-100 aspect-[16/9] mb-3">
-        {article.image_url ? (
-          <img
-            src={article.image_url}
-            alt={title}
-            className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
-          />
-        ) : (
-          <div className="w-full h-full bg-gradient-to-br from-maroon-700 to-maroon-500 flex items-center justify-center">
-            <span className="text-white/20 text-4xl font-black select-none">QS</span>
-          </div>
-        )}
+        <img
+          src={article.image_url || fallbackImg}
+          alt={title}
+          className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
+        />
         <span className="absolute top-2 left-2 bg-maroon-800 text-white text-xs px-2 py-0.5 rounded font-medium">
           {catLabel}
         </span>

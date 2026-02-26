@@ -1,4 +1,6 @@
 import getDb from './db';
+import crypto from 'crypto';
+export { getDefaultImage, CATEGORY_IMAGES } from './categories';
 
 export interface Article {
   id: number;
@@ -12,12 +14,20 @@ export interface Article {
   category: string;
   image_url: string | null;
   source: string;
+  source_url: string | null;
+  content_hash: string | null;
   tweet_ar: string | null;
   tweet_en: string | null;
   speaker_name: string | null;
   speaker_title: string | null;
   published_at: string;
   created_at: string;
+}
+
+
+export function makeContentHash(title: string, source_url?: string | null): string {
+  const input = (source_url || title).toLowerCase().trim();
+  return crypto.createHash('sha256').update(input).digest('hex').slice(0, 16);
 }
 
 export function getArticles(opts: {
@@ -49,18 +59,28 @@ export function getLatestArticle(): Article | null {
   return db.prepare(`SELECT * FROM articles ORDER BY published_at DESC LIMIT 1`).get() as Article | null;
 }
 
+export function getArticleBySourceUrl(sourceUrl: string): Article | null {
+  const db = getDb();
+  return db.prepare(`SELECT id, slug FROM articles WHERE source_url = ? LIMIT 1`).get(sourceUrl) as Article | null;
+}
+
+export function getArticleByContentHash(hash: string): Article | null {
+  const db = getDb();
+  return db.prepare(`SELECT id, slug FROM articles WHERE content_hash = ? LIMIT 1`).get(hash) as Article | null;
+}
+
 export function createArticle(data: Omit<Article, 'id' | 'created_at'>): Article {
   const db = getDb();
 
   db.prepare(`
     INSERT OR IGNORE INTO articles
       (slug, title_ar, title_en, body_ar, body_en, excerpt_ar, excerpt_en,
-       category, image_url, source, tweet_ar, tweet_en,
-       speaker_name, speaker_title, published_at)
+       category, image_url, source, source_url, content_hash,
+       tweet_ar, tweet_en, speaker_name, speaker_title, published_at)
     VALUES
       (@slug, @title_ar, @title_en, @body_ar, @body_en, @excerpt_ar, @excerpt_en,
-       @category, @image_url, @source, @tweet_ar, @tweet_en,
-       @speaker_name, @speaker_title, @published_at)
+       @category, @image_url, @source, @source_url, @content_hash,
+       @tweet_ar, @tweet_en, @speaker_name, @speaker_title, @published_at)
   `).run(data);
 
   return db.prepare(`SELECT * FROM articles WHERE slug = ?`).get(data.slug) as Article;
