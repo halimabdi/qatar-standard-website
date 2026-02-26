@@ -1,5 +1,6 @@
 'use client';
 import Link from 'next/link';
+import Image from 'next/image';
 import { useState } from 'react';
 
 const NAV = [
@@ -31,11 +32,15 @@ export default function Header() {
       {/* Logo + Nav */}
       <div className="max-w-7xl mx-auto px-4">
         <div className="flex items-center justify-between py-3" dir="rtl">
-          <Link href="/" className="flex flex-col leading-none">
-            <span className="text-3xl font-black text-maroon-800 tracking-tight" style={{ fontFamily: 'serif' }}>
-              قطر ستاندرد
-            </span>
-            <span className="text-xs text-gray-500 tracking-widest uppercase">Qatar Standard</span>
+          <Link href="/" className="flex items-center">
+            <Image
+              src="/qatar-standard-logo.png"
+              alt="Qatar Standard"
+              width={160}
+              height={60}
+              className="h-12 w-auto object-contain"
+              priority
+            />
           </Link>
 
           {/* Desktop nav */}

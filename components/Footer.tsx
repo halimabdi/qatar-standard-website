@@ -1,4 +1,5 @@
 import Link from 'next/link';
+import Image from 'next/image';
 
 export default function Footer() {
   const year = new Date().getFullYear();
@@ -9,10 +10,17 @@ export default function Footer() {
         <div className="grid grid-cols-1 md:grid-cols-3 gap-8" dir="rtl">
           {/* Brand */}
           <div>
-            <h2 className="text-2xl font-black mb-2" style={{ fontFamily: 'serif' }}>قطر ستاندرد</h2>
+            <Image
+              src="/qatar-standard-logo.png"
+              alt="Qatar Standard"
+              width={140}
+              height={52}
+              className="h-12 w-auto object-contain brightness-0 invert mb-3"
+            />
             <p className="text-sm text-white/60 leading-relaxed">
               موقع إخباري متخصص في الشأن القطري والخليجي والدبلوماسية الإقليمية.
             </p>
+            <p className="text-xs text-white/40 mt-2">newsdesk@qatar-standard.com</p>
           </div>
 
           {/* Categories */}
@@ -52,7 +60,7 @@ export default function Footer() {
         </div>
 
         <div className="border-t border-white/10 mt-8 pt-4 text-xs text-white/40 text-center">
-          © {year} قطر ستاندرد · Qatar Standard — جميع الحقوق محفوظة
+          © {year} Qatar Standard — جميع الحقوق محفوظة
         </div>
       </div>
     </footer>

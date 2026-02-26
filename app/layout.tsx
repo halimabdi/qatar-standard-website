@@ -4,14 +4,24 @@ import Header from "@/components/Header";
 import Footer from "@/components/Footer";
 
 export const metadata: Metadata = {
-  title: "قطر ستاندرد | Qatar Standard",
+  title: { default: "قطر ستاندرد | Qatar Standard", template: "%s | Qatar Standard" },
   description: "موقع إخباري متخصص في الشأن القطري والخليجي والدبلوماسية الإقليمية",
+  metadataBase: new URL("https://qatar-standard.com"),
   openGraph: {
     title: "قطر ستاندرد | Qatar Standard",
     description: "أخبار قطر والخليج والدبلوماسية",
     siteName: "Qatar Standard",
     locale: "ar_QA",
     type: "website",
+    images: [{ url: "/qatar-standard-logo.png", width: 500, height: 500 }],
+  },
+  twitter: {
+    card: "summary_large_image",
+    site: "@QatarStandard",
+  },
+  icons: {
+    icon: "/qatar-standard-logo.png",
+    apple: "/qatar-standard-logo.png",
   },
 };
 
