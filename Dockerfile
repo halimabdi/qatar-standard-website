@@ -13,7 +13,8 @@ RUN npm run build
 FROM node:22-alpine AS runner
 WORKDIR /app
 
-RUN apk add --no-cache python3 make g++ curl
+# gcompat provides glibc compatibility layer needed by better-sqlite3 pre-built binaries
+RUN apk add --no-cache python3 make g++ curl gcompat
 
 ENV NODE_ENV=production
 ENV PORT=3000
