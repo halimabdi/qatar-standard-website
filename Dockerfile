@@ -13,7 +13,8 @@ RUN npm run build
 FROM node:22-slim AS runner
 WORKDIR /app
 
-RUN apt-get update && apt-get install -y --no-install-recommends curl && rm -rf /var/lib/apt/lists/*
+# Build tools needed to recompile native modules + curl for healthcheck
+RUN apt-get update && apt-get install -y --no-install-recommends python3 make g++ curl && rm -rf /var/lib/apt/lists/*
 
 ENV NODE_ENV=production
 ENV PORT=3000
@@ -26,6 +27,9 @@ RUN mkdir -p /data && chown nextjs:nodejs /data
 COPY --from=builder /app/public ./public
 COPY --from=builder --chown=nextjs:nodejs /app/.next/standalone ./
 COPY --from=builder --chown=nextjs:nodejs /app/.next/static ./.next/static
+
+# Rebuild better-sqlite3 for the current Node.js version
+RUN npm rebuild better-sqlite3 --build-from-source
 
 USER nextjs
 
