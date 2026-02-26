@@ -1,0 +1,60 @@
+import Link from 'next/link';
+
+export default function Footer() {
+  const year = new Date().getFullYear();
+
+  return (
+    <footer className="bg-maroon-900 text-white mt-12">
+      <div className="max-w-7xl mx-auto px-4 py-10">
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-8" dir="rtl">
+          {/* Brand */}
+          <div>
+            <h2 className="text-2xl font-black mb-2" style={{ fontFamily: 'serif' }}>قطر ستاندرد</h2>
+            <p className="text-sm text-white/60 leading-relaxed">
+              موقع إخباري متخصص في الشأن القطري والخليجي والدبلوماسية الإقليمية.
+            </p>
+          </div>
+
+          {/* Categories */}
+          <div>
+            <h3 className="text-sm font-bold uppercase tracking-wider text-white/50 mb-3">الأقسام</h3>
+            <ul className="space-y-1.5 text-sm text-white/75">
+              {[
+                ['/', 'الرئيسية'],
+                ['/category/diplomacy', 'دبلوماسية'],
+                ['/category/palestine', 'فلسطين'],
+                ['/category/economy', 'اقتصاد'],
+                ['/category/gulf', 'خليج'],
+                ['/category/politics', 'سياسة'],
+              ].map(([href, label]) => (
+                <li key={href}>
+                  <Link href={href} className="hover:text-white transition-colors">{label}</Link>
+                </li>
+              ))}
+            </ul>
+          </div>
+
+          {/* Twitter */}
+          <div>
+            <h3 className="text-sm font-bold uppercase tracking-wider text-white/50 mb-3">تواصل معنا</h3>
+            <a
+              href="https://twitter.com/QatarStandard"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="inline-flex items-center gap-2 text-sm text-white/75 hover:text-white transition-colors"
+            >
+              <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 24 24">
+                <path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z" />
+              </svg>
+              @QatarStandard
+            </a>
+          </div>
+        </div>
+
+        <div className="border-t border-white/10 mt-8 pt-4 text-xs text-white/40 text-center">
+          © {year} قطر ستاندرد · Qatar Standard — جميع الحقوق محفوظة
+        </div>
+      </div>
+    </footer>
+  );
+}
