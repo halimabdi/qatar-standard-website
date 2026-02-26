@@ -28,7 +28,8 @@ COPY --from=builder /app/public ./public
 COPY --from=builder --chown=nextjs:nodejs /app/.next/standalone ./
 COPY --from=builder --chown=nextjs:nodejs /app/.next/static ./.next/static
 
-# Rebuild better-sqlite3 for the current Node.js version
+# Copy package files and rebuild better-sqlite3 natively for this Node.js version
+COPY --from=builder /app/package*.json ./
 RUN npm rebuild better-sqlite3 --build-from-source
 
 USER nextjs
