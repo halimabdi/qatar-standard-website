@@ -105,7 +105,28 @@ Daily analysis runs 9 AM–2 PM AST, 22h cooldown.
 Bot uses `WEBSITE_URL=https://qatar-standard.com` and `WEBSITE_API_KEY=qatar-standard-2024`.
 
 ## Domain & Infrastructure
-- **Domain**: `qatar-standard.com` (Cloudflare, zone `1aa984077250a746e945e4f1f1314797`)
+- **Domain**: `qatar-standard.com` (Cloudflare proxied, zone `1aa984077250a746e945e4f1f1314797`)
+- **DNS**: Points to Cloudflare IPs (proxied), which forward to `5.161.52.117`
 - **Server IP**: `5.161.52.117`
 - **Email**: `newsdesk@qatar-standard.com` → forwarded to `halim.abdihalim@gmail.com` via Cloudflare Email Routing
-- **Healthcheck**: disabled in Coolify (app runs fine, healthcheck was misconfigured)
+
+## Traefik Routing
+The site runs outside Coolify's broken healthcheck via direct Docker + static Traefik config.
+
+- **Container**: `qatar-standard-website` on `coolify` network
+- **Traefik config**: `/data/coolify/proxy/dynamic/qatar-standard.yaml`
+- **Run script**: `/tmp/run-qatar.sh` (or rebuild using image tag)
+
+To restart the container after a new image is built:
+```bash
+docker rm -f qatar-standard-website
+bash /tmp/run-qatar.sh
+```
+
+To rebuild after code changes:
+```bash
+cd /root/qatar-standard-website
+git pull
+docker build -t qatar-standard-local:latest .
+# Then update /tmp/run-qatar.sh to use new image tag and re-run
+```
