@@ -2,7 +2,8 @@ FROM node:22-slim AS deps
 WORKDIR /app
 RUN apt-get update && apt-get install -y --no-install-recommends python3 make g++ && rm -rf /var/lib/apt/lists/*
 COPY package*.json ./
-RUN NODE_ENV=development npm ci
+# Force compile from source so the binary matches the exact node:22-slim platform
+RUN NODE_ENV=development npm_config_better_sqlite3_build_from_source=true npm ci
 
 FROM node:22-slim AS builder
 WORKDIR /app
@@ -13,8 +14,7 @@ RUN npm run build
 FROM node:22-slim AS runner
 WORKDIR /app
 
-# Build tools needed to recompile native modules + curl for healthcheck
-RUN apt-get update && apt-get install -y --no-install-recommends python3 make g++ curl && rm -rf /var/lib/apt/lists/*
+RUN apt-get update && apt-get install -y --no-install-recommends curl && rm -rf /var/lib/apt/lists/*
 
 ENV NODE_ENV=production
 ENV PORT=3000
@@ -28,9 +28,8 @@ COPY --from=builder /app/public ./public
 COPY --from=builder --chown=nextjs:nodejs /app/.next/standalone ./
 COPY --from=builder --chown=nextjs:nodejs /app/.next/static ./.next/static
 
-# Copy package files and rebuild better-sqlite3 natively for this Node.js version
-COPY --from=builder /app/package*.json ./
-RUN npm rebuild better-sqlite3 --build-from-source
+# Replace bundled better-sqlite3 with the correctly compiled version from deps stage
+COPY --from=deps /app/node_modules/better-sqlite3 /app/node_modules/better-sqlite3
 
 USER nextjs
 
