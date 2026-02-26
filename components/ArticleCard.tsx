@@ -33,6 +33,8 @@ export default function ArticleCard({ article, size = 'md' }: Props) {
 
   const cleanMd    = (s: string) => s.replace(/\*\*/g, '').replace(/^#+\s*/gm, '').trim();
   const fallbackImg = getDefaultImage(article.category, article.source);
+  const imgSrc = article.image_url || fallbackImg;
+  const onImgError = (e: React.SyntheticEvent<HTMLImageElement>) => { e.currentTarget.src = fallbackImg; };
   const title   = cleanMd(isAr ? (article.title_ar || article.title_en || '') : (article.title_en || article.title_ar || ''));
   const excerpt = cleanMd(isAr ? (article.excerpt_ar || article.excerpt_en || '') : (article.excerpt_en || article.excerpt_ar || ''));
   const catLabel = isAr ? (CATEGORIES_AR[article.category] || article.category) : (CATEGORIES_EN[article.category] || article.category);
@@ -44,8 +46,9 @@ export default function ArticleCard({ article, size = 'md' }: Props) {
       <Link href={`/article/${article.slug}`} className="group block">
         <div className="relative overflow-hidden rounded-lg bg-gray-100 aspect-[16/9] mb-4">
           <img
-            src={article.image_url || fallbackImg}
+            src={imgSrc}
             alt={title}
+            onError={onImgError}
             className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
           />
           <span className="absolute top-3 left-3 bg-maroon-800 text-white text-xs px-2 py-1 rounded font-medium">
@@ -77,7 +80,7 @@ export default function ArticleCard({ article, size = 'md' }: Props) {
     return (
       <Link href={`/article/${article.slug}`} className="group flex gap-3 py-3 border-b border-gray-100 last:border-0">
         <div className="relative overflow-hidden rounded w-20 h-16 shrink-0 bg-gray-100">
-          <img src={article.image_url || fallbackImg} alt={title} className="w-full h-full object-cover group-hover:scale-105 transition-transform" />
+          <img src={imgSrc} alt={title} onError={onImgError} className="w-full h-full object-cover group-hover:scale-105 transition-transform" />
         </div>
         <div className="flex-1 min-w-0">
           <span className="text-xs text-maroon-700 font-medium">{catLabel}</span>
@@ -94,8 +97,9 @@ export default function ArticleCard({ article, size = 'md' }: Props) {
     <Link href={`/article/${article.slug}`} className="group block">
       <div className="relative overflow-hidden rounded-lg bg-gray-100 aspect-[16/9] mb-3">
         <img
-          src={article.image_url || fallbackImg}
+          src={imgSrc}
           alt={title}
+          onError={onImgError}
           className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
         />
         <span className="absolute top-2 left-2 bg-maroon-800 text-white text-xs px-2 py-0.5 rounded font-medium">

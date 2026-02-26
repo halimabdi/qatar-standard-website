@@ -42,16 +42,52 @@ async function researchAgent(sourceUrl?: string | null): Promise<string> {
   }
 }
 
-// ── Agent 2: SerpAPI image fetch ──────────────────────────────────────────────
+// ── Image helpers ─────────────────────────────────────────────────────────────
 
+// Scrape og:image / twitter:image from a URL
+async function scrapeOgImage(url: string): Promise<string | null> {
+  try {
+    const res = await fetch(url, {
+      signal: AbortSignal.timeout(8000),
+      headers: { 'User-Agent': 'Mozilla/5.0 (compatible; QatarStandard/1.0)' },
+    });
+    if (!res.ok) return null;
+    const html = await res.text();
+    const match =
+      html.match(/<meta[^>]*property="og:image"[^>]*content="([^"]+)"/i)?.[1] ||
+      html.match(/<meta[^>]*content="([^"]+)"[^>]*property="og:image"/i)?.[1] ||
+      html.match(/<meta[^>]*name="twitter:image"[^>]*content="([^"]+)"/i)?.[1] ||
+      html.match(/<meta[^>]*content="([^"]+)"[^>]*name="twitter:image"/i)?.[1];
+    if (match && match.startsWith('http')) return match;
+    return null;
+  } catch {
+    return null;
+  }
+}
+
+// SerpAPI: try Google Images first (full-size), fall back to news thumbnails
 async function fetchSerpImage(query: string): Promise<string | null> {
   const serpKey = process.env.SERP_API_KEY;
   if (!serpKey) return null;
   try {
-    const url = `https://serpapi.com/search.json?engine=google&q=${encodeURIComponent(query)}&tbm=nws&num=10&api_key=${serpKey}`;
-    const res = await fetch(url, { signal: AbortSignal.timeout(10000) });
-    if (!res.ok) return null;
-    const data = await res.json();
+    // Google Images — returns full-size editorial images
+    const imgUrl = `https://serpapi.com/search.json?engine=google&q=${encodeURIComponent(query)}&tbm=isch&num=5&safe=active&api_key=${serpKey}`;
+    const imgRes = await fetch(imgUrl, { signal: AbortSignal.timeout(10000) });
+    if (imgRes.ok) {
+      const data = await imgRes.json();
+      const results: Array<{ original?: string; thumbnail?: string }> = data?.images_results || [];
+      for (const r of results) {
+        const src = r.original || r.thumbnail;
+        if (src?.startsWith('http') && !src.includes('gstatic') && !src.includes('google.com')) return src;
+      }
+    }
+  } catch { /* fall through */ }
+  try {
+    // Google News thumbnails — fallback
+    const newsUrl = `https://serpapi.com/search.json?engine=google&q=${encodeURIComponent(query)}&tbm=nws&num=10&api_key=${serpKey}`;
+    const newsRes = await fetch(newsUrl, { signal: AbortSignal.timeout(10000) });
+    if (!newsRes.ok) return null;
+    const data = await newsRes.json();
     const results: Array<{ thumbnail?: string }> = data?.news_results || [];
     for (const r of results) {
       if (r.thumbnail?.startsWith('http')) return r.thumbnail;
@@ -60,6 +96,31 @@ async function fetchSerpImage(query: string): Promise<string | null> {
   } catch {
     return null;
   }
+}
+
+// Full image resolution pipeline — returns first valid external image URL
+async function resolveImage(
+  provided: string | null,
+  sourceUrl: string | null,
+  searchQuery: string,
+  category: string,
+  source: string,
+): Promise<string> {
+  // 1. Provided image from bot (RSS feed / og:image already fetched)
+  if (provided && provided.startsWith('http')) return provided;
+
+  // 2. og:image scraped from source article URL
+  if (sourceUrl) {
+    const og = await scrapeOgImage(sourceUrl);
+    if (og) return og;
+  }
+
+  // 3. SerpAPI (Google Images → news thumbnails)
+  const serp = await fetchSerpImage(searchQuery);
+  if (serp) return serp;
+
+  // 4. Curated category image — last resort
+  return getDefaultImage(category, source);
 }
 
 // ── Agent 3 + 4: Writers — Arabic & English ───────────────────────────────────
@@ -292,10 +353,13 @@ export async function POST(req: NextRequest) {
   }
 
   // ── Image ────────────────────────────────────────────────────────────────
-  let image_url: string | null = body.image_url || null;
-  if (!image_url) {
-    image_url = await fetchSerpImage(`${title_en} ${category}`) || getDefaultImage(category, source);
-  }
+  const image_url = await resolveImage(
+    body.image_url || null,
+    source_url,
+    `${title_en} ${category}`,
+    category,
+    source,
+  );
 
   // ── Excerpts ─────────────────────────────────────────────────────────────
   const excerpt_ar = body_ar.split(/[.!؟]/)[0]?.trim() || '';

@@ -152,7 +152,7 @@ export default function ArticleDetail({ article, related }: Props) {
 
           {/* Hero image */}
           <div className="rounded-xl overflow-hidden mb-6 aspect-[16/9] bg-gray-100">
-            <img src={heroImg} alt={title} className="w-full h-full object-cover" />
+            <img src={heroImg} alt={title} onError={(e) => { e.currentTarget.src = fallbackImg; }} className="w-full h-full object-cover" />
           </div>
 
           {/* Body */}
