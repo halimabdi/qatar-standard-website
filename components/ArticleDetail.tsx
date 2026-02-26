@@ -4,6 +4,15 @@ import { CATEGORIES_AR, CATEGORIES_EN } from '@/lib/categories';
 import ArticleCard from './ArticleCard';
 import Link from 'next/link';
 import { useLang } from '@/contexts/LanguageContext';
+import { marked } from 'marked';
+
+function renderMarkdown(text: string): string {
+  try {
+    return marked.parse(text, { async: false }) as string;
+  } catch {
+    return text;
+  }
+}
 
 interface Props {
   article: Article;
@@ -24,7 +33,7 @@ export default function ArticleDetail({ article, related }: Props) {
     { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' }
   );
 
-  const paragraphs = body.split('\n').filter(Boolean);
+  const bodyHtml = renderMarkdown(body);
 
   // The alternate body
   const altBody  = isAr ? (article.body_en || '') : (article.body_ar || '');
@@ -85,13 +94,11 @@ export default function ArticleDetail({ article, related }: Props) {
           )}
 
           {/* Body */}
-          <div className={isAr ? 'prose-ar mb-8' : 'prose-en mb-8'}>
-            {paragraphs.map((p, i) => (
-              <p key={i} className="mb-5 text-gray-800 leading-loose text-lg" dir={dir}>
-                {p}
-              </p>
-            ))}
-          </div>
+          <div
+            className={isAr ? 'prose-ar mb-8 prose prose-lg max-w-none' : 'prose-en mb-8 prose prose-lg max-w-none'}
+            dir={dir}
+            dangerouslySetInnerHTML={{ __html: bodyHtml }}
+          />
 
           {/* Alternate language section */}
           {altParagraphs.length > 0 && (
