@@ -58,7 +58,8 @@ async function scrapeOgImage(url: string): Promise<string | null> {
       html.match(/<meta[^>]*content="([^"]+)"[^>]*property="og:image"/i)?.[1] ||
       html.match(/<meta[^>]*name="twitter:image"[^>]*content="([^"]+)"/i)?.[1] ||
       html.match(/<meta[^>]*content="([^"]+)"[^>]*name="twitter:image"/i)?.[1];
-    if (match && match.startsWith('http')) return match;
+    // Reject generic/logo images
+    if (match && match.startsWith('http') && !match.includes('logo') && !match.includes('placeholder') && !match.includes('default')) return match;
     return null;
   } catch {
     return null;
@@ -356,7 +357,7 @@ export async function POST(req: NextRequest) {
   const image_url = await resolveImage(
     body.image_url || null,
     source_url,
-    `${title_en} ${category}`,
+    title_en.slice(0, 100),  // use full title for relevant image search
     category,
     source,
   );

@@ -56,6 +56,18 @@ export function getArticleBySlug(slug: string): Article | null {
 
 export function getLatestArticle(): Article | null {
   const db = getDb();
+  // Prefer Qatar/Gulf/diplomacy/economy stories for the hero slot.
+  // Fall back to overall latest only if nothing in preferred categories within last 48h.
+  const preferred = db.prepare(`
+    SELECT * FROM articles
+    WHERE category IN ('gulf','diplomacy','economy','politics','africa','media','general')
+      AND image_url IS NOT NULL
+      AND image_url NOT LIKE '/curated/%'
+      AND image_url NOT LIKE '/qatar%'
+      AND published_at > datetime('now', '-48 hours')
+    ORDER BY published_at DESC LIMIT 1
+  `).get() as Article | null;
+  if (preferred) return preferred;
   return db.prepare(`SELECT * FROM articles ORDER BY published_at DESC LIMIT 1`).get() as Article | null;
 }
 
