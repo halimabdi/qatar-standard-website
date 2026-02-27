@@ -76,7 +76,7 @@ export default function ArticleDetail({ article, related }: Props) {
     '@type': 'NewsArticle',
     headline: title,
     description: article.excerpt_en || article.excerpt_ar || '',
-    image: heroImg.startsWith('/') ? `https://qatar-standard.com${heroImg}` : heroImg,
+    image: heroImg ? (heroImg.startsWith('/') ? `https://qatar-standard.com${heroImg}` : heroImg) : undefined,
     datePublished: article.published_at,
     dateModified: article.published_at,
     author: { '@type': 'Organization', name: 'Qatar Standard' },
