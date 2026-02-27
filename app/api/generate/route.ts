@@ -17,29 +17,77 @@ function makeSlug(title: string): string {
 const stripMd = (s: string) =>
   s.replace(/^#+\s*/gm, '').replace(/\*\*/g, '').replace(/^["']|["']$/g, '').trim();
 
-// ── Agent 1: Research — fetch & extract source article content ────────────────
+// ── SerpAPI news research — enriches articles with real sources ───────────────
+// Budget: 100 searches/month free → cap at 3/day to stay safe.
+// Used for research only — NOT for images (og:image scraping handles that).
 
-async function researchAgent(sourceUrl?: string | null): Promise<string> {
-  if (!sourceUrl) return '';
+const serpResearchUsed = { date: '', count: 0 };
+const SERP_RESEARCH_MAX_PER_DAY = 3;
+
+async function serpNewsResearch(query: string): Promise<string> {
+  const serpKey = process.env.SERP_API_KEY;
+  if (!serpKey) return '';
+
+  // Daily cap — ~90 searches/month, well within free tier
+  const today = new Date().toISOString().slice(0, 10);
+  if (serpResearchUsed.date !== today) { serpResearchUsed.date = today; serpResearchUsed.count = 0; }
+  if (serpResearchUsed.count >= SERP_RESEARCH_MAX_PER_DAY) return '';
+
   try {
-    const res = await fetch(sourceUrl, {
-      signal: AbortSignal.timeout(8000),
-      headers: { 'User-Agent': 'Mozilla/5.0 (compatible; QatarStandard/1.0)' },
-    });
+    const url = `https://serpapi.com/search.json?engine=google&q=${encodeURIComponent(query)}&tbm=nws&num=5&api_key=${serpKey}`;
+    const res = await fetch(url, { signal: AbortSignal.timeout(10000) });
     if (!res.ok) return '';
-    const html = await res.text();
-    // Extract readable text — strip tags, collapse whitespace
-    const text = html
-      .replace(/<script[\s\S]*?<\/script>/gi, '')
-      .replace(/<style[\s\S]*?<\/style>/gi, '')
-      .replace(/<[^>]+>/g, ' ')
-      .replace(/\s{2,}/g, ' ')
-      .slice(0, 4000)
-      .trim();
-    return text;
+    const data = await res.json();
+    const results: Array<{ title?: string; snippet?: string; source?: string; date?: string }> =
+      data?.news_results || [];
+    if (!results.length) return '';
+
+    serpResearchUsed.count++;
+    console.log(`[SERP-RESEARCH] Found ${results.length} articles for: "${query.slice(0, 60)}" (${serpResearchUsed.count}/${SERP_RESEARCH_MAX_PER_DAY} today)`);
+
+    return results
+      .map(r => `• ${r.source || ''} — ${r.title || ''}: ${r.snippet || ''}`)
+      .join('\n');
   } catch {
     return '';
   }
+}
+
+// ── Agent 1: Research — fetch source content + SerpAPI related coverage ───────
+
+async function researchAgent(sourceUrl: string | null | undefined, title: string): Promise<string> {
+  const parts: string[] = [];
+
+  // 1. Fetch source article if URL provided
+  if (sourceUrl) {
+    try {
+      const res = await fetch(sourceUrl, {
+        signal: AbortSignal.timeout(8000),
+        headers: { 'User-Agent': 'Mozilla/5.0 (compatible; QatarStandard/1.0)' },
+      });
+      if (res.ok) {
+        const html = await res.text();
+        const text = html
+          .replace(/<script[\s\S]*?<\/script>/gi, '')
+          .replace(/<style[\s\S]*?<\/style>/gi, '')
+          .replace(/<[^>]+>/g, ' ')
+          .replace(/\s{2,}/g, ' ')
+          .slice(0, 3000)
+          .trim();
+        if (text) parts.push(`Source article:\n${text}`);
+      }
+    } catch { /* skip */ }
+  }
+
+  // 2. SerpAPI: find related news coverage to give writers real facts & context
+  // Especially valuable when there's no source URL (Telegram posts, tweet-only content)
+  const needsResearch = !sourceUrl || parts.length === 0;
+  if (needsResearch && title) {
+    const related = await serpNewsResearch(title);
+    if (related) parts.push(`Related news coverage:\n${related}`);
+  }
+
+  return parts.join('\n\n');
 }
 
 // ── Image helpers ─────────────────────────────────────────────────────────────
@@ -66,44 +114,11 @@ async function scrapeOgImage(url: string): Promise<string | null> {
   }
 }
 
-// SerpAPI: try Google Images first (full-size), fall back to news thumbnails
-async function fetchSerpImage(query: string): Promise<string | null> {
-  const serpKey = process.env.SERP_API_KEY;
-  if (!serpKey) return null;
-  try {
-    // Google Images — returns full-size editorial images
-    const imgUrl = `https://serpapi.com/search.json?engine=google&q=${encodeURIComponent(query)}&tbm=isch&num=5&safe=active&api_key=${serpKey}`;
-    const imgRes = await fetch(imgUrl, { signal: AbortSignal.timeout(10000) });
-    if (imgRes.ok) {
-      const data = await imgRes.json();
-      const results: Array<{ original?: string; thumbnail?: string }> = data?.images_results || [];
-      for (const r of results) {
-        const src = r.original || r.thumbnail;
-        if (src?.startsWith('http') && !src.includes('gstatic') && !src.includes('google.com')) return src;
-      }
-    }
-  } catch { /* fall through */ }
-  try {
-    // Google News thumbnails — fallback
-    const newsUrl = `https://serpapi.com/search.json?engine=google&q=${encodeURIComponent(query)}&tbm=nws&num=10&api_key=${serpKey}`;
-    const newsRes = await fetch(newsUrl, { signal: AbortSignal.timeout(10000) });
-    if (!newsRes.ok) return null;
-    const data = await newsRes.json();
-    const results: Array<{ thumbnail?: string }> = data?.news_results || [];
-    for (const r of results) {
-      if (r.thumbnail?.startsWith('http')) return r.thumbnail;
-    }
-    return null;
-  } catch {
-    return null;
-  }
-}
-
-// Full image resolution pipeline — returns first valid external image URL
+// Full image resolution pipeline — SerpAPI quota reserved for research, not images
 async function resolveImage(
   provided: string | null,
   sourceUrl: string | null,
-  searchQuery: string,
+  _searchQuery: string,
   category: string,
   source: string,
 ): Promise<string> {
@@ -116,11 +131,7 @@ async function resolveImage(
     if (og) return og;
   }
 
-  // 3. SerpAPI (Google Images → news thumbnails)
-  const serp = await fetchSerpImage(searchQuery);
-  if (serp) return serp;
-
-  // 4. Curated category image — last resort
+  // 3. Category default — SerpAPI quota reserved for article research
   return getDefaultImage(category, source);
 }
 
@@ -355,8 +366,8 @@ export async function POST(req: NextRequest) {
 
   if (!body_ar || !body_en) {
     try {
-      // Agent 1: Research — fetch source article content
-      const sourceContent = await researchAgent(source_url);
+      // Agent 1: Research — fetch source + SerpAPI related coverage
+      const sourceContent = await researchAgent(source_url, title_en);
 
       // Agents 3+4: Write Arabic + English
       const written = await writerAgents({
