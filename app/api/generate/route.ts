@@ -124,6 +124,50 @@ async function resolveImage(
   return getDefaultImage(category, source);
 }
 
+// ── LLM helper with fallback: OpenAI → Groq ───────────────────────────────────
+
+async function callLLM(messages: object[], opts: { temperature?: number; large?: boolean } = {}): Promise<string> {
+  const { temperature = 0.35, large = true } = opts;
+  const openaiKey = process.env.OPENAI_API_KEY;
+  const groqKey   = process.env.GROQ_API_KEY;
+
+  // 1. Try OpenAI (gpt-4o for writers, gpt-4o-mini for editor)
+  if (openaiKey) {
+    try {
+      const model = large ? 'gpt-4o' : 'gpt-4o-mini';
+      const res = await fetch('https://api.openai.com/v1/chat/completions', {
+        method: 'POST',
+        headers: { Authorization: `Bearer ${openaiKey}`, 'Content-Type': 'application/json' },
+        body: JSON.stringify({ model, temperature, messages }),
+        signal: AbortSignal.timeout(60000),
+      });
+      const data = await res.json();
+      if (res.ok) return data.choices?.[0]?.message?.content?.trim() || '';
+      if (res.status !== 429 && res.status !== 503) throw new Error(`OpenAI ${res.status}`);
+      console.warn(`[generate] OpenAI ${res.status} — falling back to Groq`);
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : String(err);
+      if (!msg.includes('429') && !msg.includes('quota')) throw err;
+      console.warn('[generate] OpenAI quota exceeded — falling back to Groq');
+    }
+  }
+
+  // 2. Groq fallback (llama-3.3-70b — fast, free tier generous)
+  if (groqKey) {
+    const res = await fetch('https://api.groq.com/openai/v1/chat/completions', {
+      method: 'POST',
+      headers: { Authorization: `Bearer ${groqKey}`, 'Content-Type': 'application/json' },
+      body: JSON.stringify({ model: 'llama-3.3-70b-versatile', temperature, messages, max_tokens: 2048 }),
+      signal: AbortSignal.timeout(60000),
+    });
+    const data = await res.json();
+    if (res.ok) return data.choices?.[0]?.message?.content?.trim() || '';
+    throw new Error(`Groq ${res.status}: ${JSON.stringify(data).slice(0, 100)}`);
+  }
+
+  throw new Error('No LLM provider available');
+}
+
 // ── Agent 3 + 4: Writers — Arabic & English ───────────────────────────────────
 
 async function writerAgents(opts: {
@@ -136,8 +180,6 @@ async function writerAgents(opts: {
   category: string;
 }): Promise<{ body_ar: string; body_en: string }> {
   const { title, tweet_ar, tweet_en, context, sourceContent, speaker, category } = opts;
-  const openaiKey = process.env.OPENAI_API_KEY;
-  if (!openaiKey) throw new Error('No OPENAI_API_KEY');
 
   const speakerNote = speaker ? `المتحدث: ${speaker.name}${speaker.title ? ` (${speaker.title})` : ''}` : '';
   const speakerNoteEN = speaker ? `Speaker: ${speaker.name}${speaker.title ? ` (${speaker.title})` : ''}` : '';
@@ -146,15 +188,8 @@ async function writerAgents(opts: {
   const contextNote = context ? `السياق: ${context}` : '';
   const contextNoteEN = context ? `Context: ${context}` : '';
 
-  const call = (messages: object[]) =>
-    fetch('https://api.openai.com/v1/chat/completions', {
-      method: 'POST',
-      headers: { Authorization: `Bearer ${openaiKey}`, 'Content-Type': 'application/json' },
-      body: JSON.stringify({ model: 'gpt-4o', temperature: 0.35, messages }),
-    }).then(r => r.json()).then(d => d.choices?.[0]?.message?.content?.trim() || '');
-
   const [arRes, enRes] = await Promise.all([
-    call([
+    callLLM([
       {
         role: 'system',
         content: `أنت محرر أول في موقع قطر ستاندرد الإخباري. اكتب مقالاً إخبارياً احترافياً باللغة العربية الفصحى.
@@ -173,7 +208,7 @@ async function writerAgents(opts: {
         content: `عنوان: ${title}\n${speakerNote}\n${contextNote}\nالتغريدة: ${tweet_ar || tweet_en || title}${sourceNote}\n\nاكتب المقال:`,
       },
     ]),
-    call([
+    callLLM([
       {
         role: 'system',
         content: `You are a senior editor at Qatar Standard news website. Write a professional news article in English.
@@ -199,32 +234,24 @@ Rules:
 // ── Agent 5: Editor — quality pass ────────────────────────────────────────────
 
 async function editorAgent(body_ar: string, body_en: string): Promise<{ body_ar: string; body_en: string }> {
-  const openaiKey = process.env.OPENAI_API_KEY;
-  if (!openaiKey || !body_ar || !body_en) return { body_ar, body_en };
+  if (!body_ar || !body_en) return { body_ar, body_en };
 
   try {
-    const call = (messages: object[]) =>
-      fetch('https://api.openai.com/v1/chat/completions', {
-        method: 'POST',
-        headers: { Authorization: `Bearer ${openaiKey}`, 'Content-Type': 'application/json' },
-        body: JSON.stringify({ model: 'gpt-4o-mini', temperature: 0.2, messages }),
-      }).then(r => r.json()).then(d => d.choices?.[0]?.message?.content?.trim() || '');
-
     const [edited_ar, edited_en] = await Promise.all([
-      call([
+      callLLM([
         {
           role: 'system',
           content: `أنت مدقق لغوي. راجع المقال العربي وأصلح: أي تعابير ذكاء اصطناعي مبتذلة، تكرار، وعناوين مرقّمة. أعد النص فقط بدون تعليق.`,
         },
         { role: 'user', content: body_ar },
-      ]),
-      call([
+      ], { temperature: 0.2, large: false }),
+      callLLM([
         {
           role: 'system',
           content: `You are a copy editor. Review the English article and fix: any AI clichés, repetition, numbered headers. Return only the cleaned text without comment.`,
         },
         { role: 'user', content: body_en },
-      ]),
+      ], { temperature: 0.2, large: false }),
     ]);
 
     return {
