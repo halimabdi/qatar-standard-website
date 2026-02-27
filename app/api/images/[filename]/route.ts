@@ -13,7 +13,7 @@ export async function GET(
   const safe = filename.replace(/[^a-zA-Z0-9._-]/g, '');
   if (!safe) return new NextResponse(null, { status: 400 });
 
-  const filePath = path.join(process.cwd(), 'data', 'uploads', safe);
+  const filePath = path.join('/data', 'uploads', safe);
   if (!fs.existsSync(filePath)) return new NextResponse(null, { status: 404 });
 
   const buffer = fs.readFileSync(filePath);
