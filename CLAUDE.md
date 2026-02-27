@@ -1,27 +1,27 @@
 # Qatar Standard Website — CLAUDE.md
 
 ## Project Overview
-Next.js 16 news website for Qatar Standard (`qatar-standard.com`). Arabic/English bilingual.
-Deployed via Docker + Traefik on `5.161.52.117` (Hetzner). Push to GitHub master, then SSH to pull + rebuild.
+Next.js 16 bilingual news website (`qatar-standard.com`). Arabic/English.
+Deployed via Docker + Traefik on Hetzner `5.161.52.117`. GitHub → SSH pull → Docker rebuild.
 
 ## Server Setup
 - **Repo on server**: `/root/qatar-standard-website/`
-- **DB path**: `/data/articles.db` (SQLite, mounted as Docker volume)
-- **SSH**: `ssh -i /c/Users/habdi/hetzner/hetzner_new_nopass root@5.161.52.117`
+- **DB path**: `/data/articles.db` (SQLite, Docker volume `/data/qatar-standard:/data`)
+- **SSH**: `ssh -i C:/Users/habdi/hetzner/hetzner_new_nopass root@5.161.52.117`
+
+---
 
 ## Deployment Workflow
-1. Commit and push locally: `git push origin master`
-2. SSH to server and run deploy script:
-```bash
-bash /root/deploy-qatar.sh
-```
 
-**IMPORTANT**: Always use `/root/deploy-qatar.sh` — never run `docker run` manually.
-The script includes the required `-v /data/qatar-standard:/data` volume mount.
-Running docker without this mount creates an empty DB and loses all articles.
-
-The full deploy script for reference:
+**Standard deploy** (commit + push + rebuild):
 ```bash
+# 1. Local: commit and push
+git add <files>
+git commit -m "..."
+git push origin master
+
+# 2. Server: pull + rebuild
+ssh -i C:/Users/habdi/hetzner/hetzner_new_nopass root@5.161.52.117
 cd /root/qatar-standard-website && git pull origin master
 docker build -t qatar-standard-website .
 docker stop qatar-standard-website && docker rm qatar-standard-website
@@ -29,7 +29,6 @@ docker run -d --name qatar-standard-website \
   --network coolify \
   --env-file /root/qatar-standard-website/.env.local \
   -v /data/qatar-standard:/data \
-  --env-file .env.local \
   -l 'traefik.enable=true' \
   -l 'traefik.http.routers.qatar-standard.rule=Host(`qatar-standard.com`) || Host(`www.qatar-standard.com`)' \
   -l 'traefik.http.routers.qatar-standard.entrypoints=https,http' \
@@ -37,81 +36,161 @@ docker run -d --name qatar-standard-website \
   -l 'traefik.http.routers.qatar-standard.tls.certresolver=letsencrypt' \
   -l 'traefik.http.services.qatar-standard.loadbalancer.server.port=3000' \
   qatar-standard-website
+
+# 3. Verify
+curl -s -o /dev/null -w '%{http_code}' https://qatar-standard.com/
 ```
-3. Verify: `curl -s -o /dev/null -w '%{http_code}' https://qatar-standard.com/`
+
+**CRITICAL:** Always include `-v /data/qatar-standard:/data`. Without it, a fresh empty DB is used and all articles are inaccessible.
+
+---
 
 ## Architecture
 
 ### Stack
-- **Next.js 16** App Router, TypeScript
+- **Next.js 16** App Router, TypeScript, React 19
 - **SQLite** via `better-sqlite3` (server-only — never import in client components)
-- **Tailwind CSS v4** — uses `@theme {}` in `globals.css` for custom colors (NOT tailwind.config.ts)
-- **Language**: English primary, Arabic secondary (toggle in header)
+- **Tailwind CSS v4** — colors defined in `app/globals.css` `@theme {}` block (not tailwind.config.ts)
+- **Ghost CMS** — editorial/analysis content (separate container, read-only via Content API)
 
 ### Key Files
 | File | Purpose |
 |------|---------|
-| `lib/db.ts` | SQLite singleton, creates tables |
-| `lib/articles.ts` | Article CRUD — **server-only** |
-| `lib/ghost.ts` | Ghost CMS Content API client — **server-only** |
-| `lib/categories.ts` | Category constants — **safe for client** |
-| `contexts/LanguageContext.tsx` | EN/AR language toggle (localStorage) |
-| `app/api/generate/route.ts` | POST /api/generate — creates article via GPT-4o pipeline |
-| `app/api/articles/route.ts` | GET /api/articles — paginated list |
+| `lib/db.ts` | SQLite singleton + schema — server-only |
+| `lib/articles.ts` | Article CRUD — server-only |
+| `lib/ghost.ts` | Ghost CMS Content API client — server-only |
+| `lib/categories.ts` | Category constants — safe for client |
+| `contexts/LanguageContext.tsx` | EN/AR language toggle (localStorage + html dir/lang) |
+| `app/api/generate/route.ts` | POST — creates article via multi-agent pipeline |
+| `app/api/articles/route.ts` | GET — paginated list |
+| `app/api/images/[filename]/route.ts` | GET — serve uploaded images from `/data/uploads/` |
 | `components/Header.tsx` | Sticky header with nav + language toggle |
-| `components/ArticleCard.tsx` | Card component (sm/md/lg sizes) |
-| `components/AdUnit.tsx` | Google AdSense ad unit (client component) |
-| `components/HomePage.tsx` | Homepage client wrapper |
-| `components/ArticleDetail.tsx` | Article page client wrapper |
-| `components/CategoryPage.tsx` | Category listing client wrapper |
+| `components/ArticleCard.tsx` | Card (sm/md/lg sizes), category gradient placeholder |
+| `components/ArticleDetail.tsx` | Full article view, bilingual toggle, JSON-LD |
+| `components/AdUnit.tsx` | Google AdSense (client component) |
 | `public/ads.txt` | AdSense publisher verification |
 
 ### Critical Rules
-1. **Never import `lib/articles.ts`, `lib/db.ts`, or `lib/ghost.ts` in client components** — Node.js only
-2. **Client components** must use `import type { Article }` and `lib/categories.ts` for categories
-3. **Server pages** fetch data and pass as props to client components
-4. **Tailwind v4**: custom colors go in `@theme {}` block in `globals.css`
+1. **Never import `lib/articles.ts`, `lib/db.ts`, `lib/ghost.ts` in client components** — Node.js only
+2. **Client components** use `import type { Article }` and `lib/categories.ts` only
+3. **Server pages** fetch data, pass as props to client components
+4. **Tailwind v4**: custom colors in `@theme {}` in `globals.css`, not in `tailwind.config.ts`
 5. **`serverExternalPackages: ["better-sqlite3"]`** must stay in `next.config.ts`
 
 ### Colors
-Maroon palette defined in `app/globals.css` `@theme {}` block:
-- `maroon-800` = `#8b1538` (primary nav/header)
-- `maroon-900` = `#781333` (footer)
-- `gold` = `#C8A96E`
+```css
+maroon-800 = #8b1538   /* primary nav/header */
+maroon-900 = #781333   /* footer */
+gold       = #C8A96E
+```
 
-## Image Resolution Pipeline (generate route)
-`resolveImage()` tries in order:
-1. Provided `image_url` from bot/RSS (if starts with `http`)
+---
+
+## Database Schema
+
+SQLite at `/data/articles.db` (production) or `./data/articles.db` (local).
+
+```sql
+articles (
+  id            INTEGER PRIMARY KEY AUTOINCREMENT,
+  slug          TEXT UNIQUE NOT NULL,
+  title_ar      TEXT NOT NULL,
+  title_en      TEXT,
+  body_ar       TEXT NOT NULL,
+  body_en       TEXT,
+  excerpt_ar    TEXT,
+  excerpt_en    TEXT,
+  category      TEXT DEFAULT 'general',
+  image_url     TEXT,              -- null = show gradient placeholder in UI
+  source        TEXT DEFAULT 'manual',
+  source_url    TEXT,
+  content_hash  TEXT,
+  tweet_ar      TEXT,
+  tweet_en      TEXT,
+  speaker_name  TEXT,
+  speaker_title TEXT,
+  published_at  DATETIME DEFAULT CURRENT_TIMESTAMP,
+  created_at    DATETIME DEFAULT CURRENT_TIMESTAMP,
+  tweeted_at    DATETIME NULL,
+  video_url     TEXT NULL
+)
+```
+
+**WAL mode enabled.** Dynamic column migration on startup (adds columns if missing).
+
+---
+
+## Image Resolution Pipeline
+
+`resolveImage()` in `app/api/generate/route.ts` tries in order:
+
+1. `image_url` provided by bot/RSS (must start with `http`)
 2. `og:image` scraped from `source_url`
-3. SerpAPI Google Images (`tbm=isch`, full-size)
-4. SerpAPI news thumbnails (`tbm=nws`, fallback)
-5. `getDefaultImage(category, source)` — curated last resort
+3. SerpAPI: one `tbm=nws` call → check direct thumbnail → scrape `og:image` from result links
+4. SerpAPI: `tbm=isch` Google Images fallback
+5. Returns `''` — article stores `null`, UI shows category gradient placeholder
 
-## Hero Article Logic (`getLatestArticle`)
-Prefers `gulf`, `diplomacy`, `economy`, `politics`, `africa`, `media`, `general` categories with real (non-curated) images published within 48h. Falls back to overall latest.
+**SerpAPI budget:** 20 image searches/day, shared across steps 3+4.
+**SerpAPI free tier:** 100 searches/month — exhausts in ~5 active days.
 
-## API
+**Image serving:** `/api/images/[filename]` serves from `/data/uploads/` (Docker volume).
+All image filenames are sanitized to `[a-zA-Z0-9._-]` before serving.
+
+**No curated images in UI.** When `image_url` is null, `ArticleCard` and `ArticleDetail` show a category-colored gradient (`bg-gradient-to-br`) instead of a fallback photo.
+
+---
+
+## Article Generation Pipeline (`/api/generate`)
+
+Multi-agent pipeline invoked by bot or manually:
+
+```
+1. Deduplication   — check source_url + content_hash (SHA256[0:16])
+2. Research Agent  — fetch source URL + Playwright Bing News (from bot) + SerpAPI fallback
+3. Writer Agents   — GPT-4o writes Arabic + English in parallel
+4. Editor Agent    — gpt-4o-mini quality pass (remove AI clichés, fix formatting)
+5. Image           — resolveImage() pipeline above
+6. Save            — INSERT OR IGNORE into SQLite
+```
+
+LLM fallback: OpenAI GPT-4o → Groq llama-3.3-70b → throws if both unavailable.
+
+---
+
+## Hero Article Logic
+
+`getLatestArticle()` in `lib/articles.ts`:
+- Prefers categories: `gulf`, `diplomacy`, `economy`, `politics`, `africa`, `media`, `general`
+- Requires real image (`image_url IS NOT NULL`)
+- Published within last 48h
+- Falls back to overall latest article
+
+---
+
+## API Reference
 
 ### POST /api/generate
-Generates a bilingual article from a tweet/source.
 ```bash
 curl -X POST https://qatar-standard.com/api/generate \
+  -H "x-api-key: $WEBSITE_API_KEY" \
   -H "Content-Type: application/json" \
-  -H "x-api-key: qatar-standard-2024" \
   -d '{
-    "title": "Breaking news text here",
-    "title_ar": "Arabic title (optional)",
-    "title_en": "English title (optional)",
+    "title": "News title",
+    "title_ar": "العنوان",
+    "title_en": "English title",
     "tweet_ar": "Arabic tweet text",
     "tweet_en": "English tweet text",
     "category": "diplomacy",
     "source_url": "https://source.com/article",
     "image_url": "https://image.com/photo.jpg",
+    "video_url": "https://video.com/clip.mp4",
     "speaker": { "name": "Name", "title": "Title" },
     "context": "Additional context",
-    "source": "twitter",
-    "published_at": "2025-01-01T12:00:00Z"
+    "research": "Playwright Bing News snippets",
+    "source": "bot",
+    "published_at": "2026-01-01T12:00:00Z"
   }'
+# Returns: { success: true, slug, id } or { duplicate: true, slug, id }
 ```
 
 ### GET /api/articles
@@ -119,58 +198,103 @@ curl -X POST https://qatar-standard.com/api/generate \
 curl "https://qatar-standard.com/api/articles?limit=20&offset=0&category=diplomacy"
 ```
 
+---
+
 ## Categories
 `general`, `diplomacy`, `palestine`, `economy`, `politics`, `gulf`, `media`, `turkey`, `africa`
 
+---
+
 ## Environment Variables (`.env.local` on server — never commit)
-- `OPENAI_API_KEY` — GPT-4o for article generation
-- `WEBSITE_API_KEY` — API auth (`qatar-standard-2024`)
-- `DB_PATH` — SQLite dir (default: `./data`, production: `/data`)
-- `SERP_API_KEY` — SerpAPI for image search
-- `GHOST_URL` — `https://cms.qatar-standard.com`
-- `GHOST_CONTENT_KEY` — Ghost Content API key (`c04947be646c0d43eff90f2b13`)
-- `CREWAI_URL` — Optional CrewAI service URL for enhanced article pipeline
+
+```bash
+OPENAI_API_KEY      # GPT-4o (required for article generation)
+GROQ_API_KEY        # Groq llama-3.3-70b (LLM fallback)
+WEBSITE_API_KEY     # Auth key for /api/generate (see security note)
+DB_PATH             # SQLite dir: ./data (dev) / /data (production)
+SERP_API_KEY        # SerpAPI image search (optional, 100 free/month)
+GHOST_URL           # https://cms.qatar-standard.com
+GHOST_CONTENT_KEY   # Ghost Content API key (in .env.local, not here)
+CREWAI_URL          # Optional external article pipeline
+ADMIN_PASSWORD      # Admin panel auth (see security note)
+```
+
+**Security notes:**
+- `WEBSITE_API_KEY` has a hardcoded fallback in source (`qatar-standard-2024`) — always set this in `.env.local`
+- `ADMIN_PASSWORD` has a hardcoded fallback in source — always set this in `.env.local`
+- Ghost admin credentials are in `.env.local` on the server only, not in this file
+
+---
 
 ## Ghost CMS
 - **URL**: `https://cms.qatar-standard.com`
 - **Container**: `ghost-cms` on `coolify` network (port 2368)
-- **Admin**: `newsdesk@qatar-standard.com` / `QatarStandard2024!`
 - **Traefik config**: `/data/coolify/proxy/dynamic/ghost-cms.yaml`
-- **Content API key**: `c04947be646c0d43eff90f2b13`
-- Ghost is for editorial/long-form posts; news articles use SQLite via `/api/generate`
+- Ghost is for editorial/long-form analysis posts; news articles use SQLite via `/api/generate`
+- Ghost Content API is read-only from the website side
+- Admin credentials are stored in `.env.local` on the server
+
+---
 
 ## Google AdSense
 - **Publisher ID**: `ca-pub-6753180364525256`
 - Script loaded in `app/layout.tsx` via `next/script` (`strategy="afterInteractive"`)
-- `public/ads.txt` contains: `google.com, pub-6753180364525256, DIRECT, f08c47fec0942fa0`
-- Use `<AdUnit slot="SLOT_ID" />` component anywhere on the page
+- `public/ads.txt`: `google.com, pub-6753180364525256, DIRECT, f08c47fec0942fa0`
+- Use `<AdUnit slot="SLOT_ID" />` component to place ads
+
+---
 
 ## Twitter Bot Integration
-- **Bot**: `/root/qatar-standard-bot/bot.js`
-- Posts via `POST /api/generate` with `x-api-key: qatar-standard-2024`
-- `WEBSITE_URL=https://qatar-standard.com`
+- **Bot**: `/root/qatar-standard-bot/bot.js` on server
+- Posts via `POST /api/generate` with `x-api-key: $WEBSITE_API_KEY`
+- `WEBSITE_URL=https://qatar-standard.com` in bot `.env`
+- Article published to website BEFORE tweet is sent
+
+---
 
 ## Domain & Infrastructure
-- **Domain**: `qatar-standard.com` (Cloudflare proxied, zone `1aa984077250a746e945e4f1f1314797`)
-- **Account ID**: `9793a834653054818fee8826dab7da8c`
-- **DNS**: Cloudflare proxy → `5.161.52.117`
-- **Email routing**: `*@qatar-standard.com` → `halim.abdihalim@gmail.com` (Cloudflare Email Routing)
+- **Domain**: `qatar-standard.com` (Cloudflare proxied → `5.161.52.117`)
+- **DNS zone**: `1aa984077250a746e945e4f1f1314797`
+- **Cloudflare account**: `9793a834653054818fee8826dab7da8c`
+- **Email routing**: `*@qatar-standard.com` → `halim.abdihalim@gmail.com`
   - `newsdesk@`, `admin@`, `facebook@`, `social@` all forward
-- **Cloudflare API key**: `9661c78302f23f7e2ce4aae1a38196dfc8e0c` (Global API Key, X-Auth-Key header)
-- **Cloudflare email**: `halim.abdihalim@gmail.com`
+- **Cloudflare API**: Global API Key in `.env.local`
+
+---
 
 ## NordVPN + Web Traffic (IMPORTANT)
-Server runs NordVPN (UAE) for Twitter posting. NordVPN routes all non-allowlisted traffic through the VPN tunnel (table 205), which breaks inbound web traffic on ports 80/443 — responses are sent through the VPN instead of back to the requester.
 
-**Fix applied**: iptables connmark rules in `/etc/network/if-up.d/nordvpn-webports` mark port 80/443 connections with `0xe1f1` (NordVPN bypass mark) so replies route through eth0 directly.
+Server uses NordVPN for Twitter posting. This routes all non-allowlisted traffic through VPN, which breaks inbound web traffic on 80/443.
 
-**NordVPN allowlist**: ports 22, 80, 443, 41641 (SSH, HTTP, HTTPS, Tailscale) — run `nordvpn allowlist add port 80` / `443` if reset.
+**Fix applied:** iptables connmark rules in `/etc/network/if-up.d/nordvpn-webports` mark port 80/443 connections with `0xe1f1` so replies bypass VPN and go via eth0.
 
-**NordVPN firewall**: Keep disabled (`nordvpn set firewall off`) — UFW handles firewall rules. NordVPN firewall sets `iptables INPUT policy DROP` which overrides UFW and breaks everything.
+**If site goes down (522 error):**
+```bash
+nordvpn settings | grep Firewall          # Must be: disabled
+iptables -t mangle -L PREROUTING -n | grep CONNMARK  # Must have 3 rules
+nordvpn set firewall off                  # If firewall is on, this breaks UFW
+nordvpn allowlist add port 80             # Re-add if reset
+nordvpn allowlist add port 443
+```
 
-If site goes down with 522 error, check: `nordvpn settings | grep Firewall` (should be disabled) and `iptables -t mangle -L PREROUTING -n | grep CONNMARK` (should have 3 rules).
+---
 
 ## Traefik Routing
-- **Container**: `qatar-standard-website` on `coolify` network
-- SSL via Traefik letsencrypt certresolver (labels on Docker container)
+- Container `qatar-standard-website` on `coolify` network
+- SSL via Let's Encrypt (Traefik labels on Docker container)
 - Ghost CMS: `/data/coolify/proxy/dynamic/ghost-cms.yaml`
+
+---
+
+## Known Issues & Gaps
+
+| Issue | Severity | Notes |
+|---|---|---|
+| Hardcoded API key fallback in source | HIGH | Set `WEBSITE_API_KEY` in `.env.local` to override |
+| Hardcoded admin password fallback | HIGH | Set `ADMIN_PASSWORD` in `.env.local` |
+| Admin UI not yet implemented | MEDIUM | `/api/admin/auth` exists but no dashboard UI |
+| No rate limiting on `/api/generate` | MEDIUM | Bot is the only caller; low risk |
+| og:image scraper uses fragile regex | LOW | Can fail on unusual HTML |
+| SerpAPI free tier: 100/month | LOW | Exhausts after ~5 active days |
+| No full-text article search | LOW | Category/slug lookup only |
+| No database backup automation | LOW | Manual backup needed |
