@@ -55,8 +55,14 @@ async function serpNewsResearch(query: string): Promise<string> {
 
 // ── Agent 1: Research — fetch source content + SerpAPI related coverage ───────
 
-async function researchAgent(sourceUrl: string | null | undefined, title: string): Promise<string> {
+async function researchAgent(sourceUrl: string | null | undefined, title: string, playwrightResearch?: string): Promise<string> {
   const parts: string[] = [];
+
+  // 0. Playwright Bing News research passed from bot (richest source — real article snippets)
+  if (playwrightResearch) {
+    parts.push(`Recent news coverage:\n${playwrightResearch}`);
+    console.log(`[research] Using Playwright research (${playwrightResearch.length} chars)`);
+  }
 
   // 1. Fetch source article if URL provided
   if (sourceUrl) {
@@ -79,9 +85,8 @@ async function researchAgent(sourceUrl: string | null | undefined, title: string
     } catch { /* skip */ }
   }
 
-  // 2. SerpAPI: find related news coverage to give writers real facts & context
-  // Especially valuable when there's no source URL (Telegram posts, tweet-only content)
-  const needsResearch = !sourceUrl || parts.length === 0;
+  // 2. SerpAPI fallback — only when no Playwright research and no source URL
+  const needsResearch = !playwrightResearch && (!sourceUrl || parts.length === 0);
   if (needsResearch && title) {
     const related = await serpNewsResearch(title);
     if (related) parts.push(`Related news coverage:\n${related}`);
@@ -292,6 +297,7 @@ export async function POST(req: NextRequest) {
     tweet_ar?: string;
     tweet_en?: string;
     context?: string;
+    research?: string;
     image_url?: string;
     video_url?: string;
     source_url?: string;
@@ -370,8 +376,8 @@ export async function POST(req: NextRequest) {
 
   if (!body_ar || !body_en) {
     try {
-      // Agent 1: Research — fetch source + SerpAPI related coverage
-      const sourceContent = await researchAgent(source_url, title_en);
+      // Agent 1: Research — Playwright Bing News (from bot) + source URL + SerpAPI fallback
+      const sourceContent = await researchAgent(source_url, title_en, body.research);
 
       // Agents 3+4: Write Arabic + English
       const written = await writerAgents({
