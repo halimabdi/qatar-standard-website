@@ -282,6 +282,31 @@ async function pexelsImageSearch(query: string): Promise<string | null> {
   return null;
 }
 
+// Verify an image URL is actually reachable (HEAD request, 200 OK)
+async function checkImageUrl(url: string): Promise<boolean> {
+  try {
+    const res = await fetch(url, {
+      method: 'HEAD',
+      signal: AbortSignal.timeout(6000),
+      headers: { 'User-Agent': 'Mozilla/5.0 (compatible; QatarStandard/1.0)' },
+    });
+    if (res.ok) return true;
+    // Some servers block HEAD — fall back to GET with no body read
+    if (res.status === 405 || res.status === 403) {
+      const res2 = await fetch(url, {
+        method: 'GET',
+        signal: AbortSignal.timeout(6000),
+        headers: { 'User-Agent': 'Mozilla/5.0 (compatible; QatarStandard/1.0)', Range: 'bytes=0-0' },
+      });
+      return res2.ok || res2.status === 206;
+    }
+    console.log(`[IMAGE] URL check failed (${res.status}): ${url.slice(0, 80)}`);
+    return false;
+  } catch {
+    return false;
+  }
+}
+
 // Full image resolution pipeline
 async function resolveImage(
   provided: string | null,
@@ -291,36 +316,39 @@ async function resolveImage(
   source: string,
 ): Promise<string> {
   // 1. Provided image from bot (RSS feed / og:image already fetched)
-  if (provided && provided.startsWith('http')) return provided;
+  if (provided && provided.startsWith('http')) {
+    if (await checkImageUrl(provided)) return provided;
+    console.log(`[IMAGE] Provided URL 404/unreachable, searching…`);
+  }
 
   // 2. og:image scraped from source article URL
   if (sourceUrl) {
     const og = await scrapeOgImage(sourceUrl);
-    if (og) return og;
+    if (og && await checkImageUrl(og)) return og;
   }
 
   // 3. SerpAPI — news thumbnail, og:image from news links, or Google Images (single call for news)
   if (searchQuery) {
     const serpImg = await serpImageSearch(searchQuery);
-    if (serpImg) return serpImg;
+    if (serpImg && await checkImageUrl(serpImg)) return serpImg;
   }
 
   // 4. Bing Images via Playwright — same approach as bot, finds news-relevant photos
   if (searchQuery) {
     const bingImg = await bingImageSearch(searchQuery);
-    if (bingImg) return bingImg;
+    if (bingImg && await checkImageUrl(bingImg)) return bingImg;
   }
 
   // 5. Wikimedia Commons — free, topic-matched encyclopedia images
   if (searchQuery) {
     const wikiImg = await wikimediaImageSearch(searchQuery);
-    if (wikiImg) return wikiImg;
+    if (wikiImg && await checkImageUrl(wikiImg)) return wikiImg;
   }
 
   // 6. Pexels — stock photos (requires PEXELS_API_KEY)
   if (searchQuery) {
     const pexelsImg = await pexelsImageSearch(searchQuery);
-    if (pexelsImg) return pexelsImg;
+    if (pexelsImg && await checkImageUrl(pexelsImg)) return pexelsImg;
   }
 
   // 7. No image found — return empty so article stores null and shows gradient placeholder
