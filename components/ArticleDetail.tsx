@@ -157,7 +157,7 @@ export default function ArticleDetail({ article, related }: Props) {
                 controls
                 playsInline
                 className="w-full h-full"
-                poster={heroImg}
+                poster={heroImg || undefined}
               />
             </div>
           ) : heroImg ? (
