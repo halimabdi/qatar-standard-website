@@ -19,15 +19,19 @@ export async function GET(
   const buffer = fs.readFileSync(filePath);
   const ext = path.extname(safe).toLowerCase();
   const contentType =
-    ext === '.png' ? 'image/png' :
-    ext === '.gif' ? 'image/gif' :
+    ext === '.png'  ? 'image/png' :
+    ext === '.gif'  ? 'image/gif' :
     ext === '.webp' ? 'image/webp' :
+    ext === '.mp4'  ? 'video/mp4' :
+    ext === '.webm' ? 'video/webm' :
+    ext === '.mov'  ? 'video/quicktime' :
     'image/jpeg';
 
   return new NextResponse(buffer, {
     headers: {
       'Content-Type': contentType,
       'Cache-Control': 'public, max-age=604800',
+      ...(contentType.startsWith('video/') ? { 'Accept-Ranges': 'bytes' } : {}),
     },
   });
 }

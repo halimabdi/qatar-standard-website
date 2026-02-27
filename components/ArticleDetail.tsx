@@ -150,10 +150,22 @@ export default function ArticleDetail({ article, related }: Props) {
             )}
           </div>
 
-          {/* Hero image */}
-          <div className="rounded-xl overflow-hidden mb-6 aspect-[16/9] bg-gray-100">
-            <img src={heroImg} alt={title} onError={(e) => { e.currentTarget.src = fallbackImg; }} className="w-full h-full object-cover" />
-          </div>
+          {/* Hero image / video */}
+          {/\.(mp4|webm|mov)(\?.*)?$/i.test(heroImg) ? (
+            <div className="rounded-xl overflow-hidden mb-6 aspect-[16/9] bg-black">
+              <video
+                src={heroImg}
+                controls
+                playsInline
+                className="w-full h-full"
+                poster={fallbackImg}
+              />
+            </div>
+          ) : (
+            <div className="rounded-xl overflow-hidden mb-6 aspect-[16/9] bg-gray-100">
+              <img src={heroImg} alt={title} onError={(e) => { e.currentTarget.src = fallbackImg; }} className="w-full h-full object-cover" />
+            </div>
+          )}
 
           {/* Body */}
           <div
