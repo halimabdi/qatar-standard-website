@@ -212,7 +212,8 @@ async function writerAgents(opts: {
 - خلاصة بمنظور قطري
 - لا تستخدم: يُجسّد، يُرسّخ، يُسلّط الضوء، مما يعكس، في ظل، تجدر الإشارة
 - لا تذكر أنك ذكاء اصطناعي
-- اكتب الفقرات فقط بدون عناوين`,
+- اكتب الفقرات فقط بدون عناوين أو نقاط أو تنسيق مارك داون (**) أو مسميات مثل "المقدمة" أو "الخلاصة"
+- النص العادي فقط — يجب أن يبدو كمقال في صحيفة`,
       },
       {
         role: 'user',
@@ -230,7 +231,9 @@ Rules:
 - Specific details, numbers, and facts from the source
 - Conclusion with Qatar/Gulf perspective
 - No AI filler phrases: "it is worth noting", "in light of", "this reflects", "underscores"
-- Write paragraphs only, no headers or bullet points`,
+- Write paragraphs only — NO headers, NO bold (**), NO markdown, NO bullet points
+- Do NOT write section labels like "Introduction", "Background", "Conclusion"
+- Plain prose only — it must read like a newspaper article`,
       },
       {
         role: 'user',
@@ -259,7 +262,7 @@ async function editorAgent(body_ar: string, body_en: string): Promise<{ body_ar:
       callLLM([
         {
           role: 'system',
-          content: `You are a copy editor. Review the English article and fix: any AI clichés, repetition, numbered headers. Return only the cleaned text without comment.`,
+          content: `You are a copy editor. Review the English article and fix: any AI clichés, repetition, markdown bold (**text**), section headers (Introduction, Conclusion, Background), bullet points, or numbered lists. The output must be plain prose paragraphs only — like a newspaper article. Return only the cleaned text without comment.`,
         },
         { role: 'user', content: body_en },
       ], { temperature: 0.2, large: false }),
