@@ -184,6 +184,52 @@ async function serpImageSearch(query: string): Promise<string | null> {
   return null;
 }
 
+// ── Bing Images search via Playwright ────────────────────────────────────────
+let _bingBrowser: import('playwright').Browser | null = null;
+
+async function bingImageSearch(query: string): Promise<string | null> {
+  try {
+    const { chromium } = await import('playwright');
+    if (!_bingBrowser || !_bingBrowser.isConnected()) {
+      _bingBrowser = await chromium.launch({ headless: true, args: ['--no-sandbox', '--disable-setuid-sandbox', '--disable-dev-shm-usage'] });
+    }
+    const ctx = await _bingBrowser.newContext({
+      userAgent: 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+      locale: 'en-US',
+    });
+    const page = await ctx.newPage();
+    try {
+      await page.route('**/*.{mp4,mp3,woff,woff2,gif,css}', r => r.abort());
+      const q = encodeURIComponent(query.slice(0, 80));
+      await page.goto(`https://www.bing.com/images/search?q=${q}&cc=US&setlang=en-US`, { waitUntil: 'domcontentloaded', timeout: 20000 });
+      await page.waitForTimeout(2000);
+      const murl = await page.evaluate(() => {
+        for (const el of document.querySelectorAll('.iusc[m]')) {
+          try {
+            const obj = JSON.parse((el as HTMLElement).getAttribute('m') || '{}');
+            const u: string = obj.murl || '';
+            if (u.startsWith('http') && u.length > 40 &&
+                !u.includes('bing.com') && !u.includes('microsoft.com') &&
+                !u.includes('gstatic.com') && !u.includes('google.com')) return u;
+          } catch { /* skip */ }
+        }
+        return null;
+      });
+      if (murl) {
+        console.log(`[IMAGE] Bing Playwright found: ${murl.slice(0, 80)}`);
+        return murl;
+      }
+    } finally {
+      await ctx.close();
+    }
+  } catch (e: unknown) {
+    const msg = e instanceof Error ? e.message : String(e);
+    console.log(`[IMAGE] Bing Playwright failed: ${msg.slice(0, 80)}`);
+    _bingBrowser = null;
+  }
+  return null;
+}
+
 // ── Wikimedia Commons image search — free, no API key ─────────────────────────
 async function wikimediaImageSearch(query: string): Promise<string | null> {
   try {
@@ -259,19 +305,25 @@ async function resolveImage(
     if (serpImg) return serpImg;
   }
 
-  // 4. Wikimedia Commons — free, topic-matched encyclopedia images
+  // 4. Bing Images via Playwright — same approach as bot, finds news-relevant photos
+  if (searchQuery) {
+    const bingImg = await bingImageSearch(searchQuery);
+    if (bingImg) return bingImg;
+  }
+
+  // 5. Wikimedia Commons — free, topic-matched encyclopedia images
   if (searchQuery) {
     const wikiImg = await wikimediaImageSearch(searchQuery);
     if (wikiImg) return wikiImg;
   }
 
-  // 5. Pexels — stock photos (requires PEXELS_API_KEY)
+  // 6. Pexels — stock photos (requires PEXELS_API_KEY)
   if (searchQuery) {
     const pexelsImg = await pexelsImageSearch(searchQuery);
     if (pexelsImg) return pexelsImg;
   }
 
-  // 6. No image found — return empty so article stores null and shows gradient placeholder
+  // 7. No image found — return empty so article stores null and shows gradient placeholder
   return '';
 }
 

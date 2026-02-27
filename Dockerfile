@@ -14,7 +14,14 @@ RUN npm run build
 FROM node:22-slim AS runner
 WORKDIR /app
 
-RUN apt-get update && apt-get install -y --no-install-recommends curl && rm -rf /var/lib/apt/lists/*
+# curl for healthcheck + Playwright Chromium system deps
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    curl \
+    libnss3 libatk1.0-0 libatk-bridge2.0-0 libcups2 libdrm2 \
+    libxkbcommon0 libxcomposite1 libxdamage1 libxfixes3 libxrandr2 \
+    libgbm1 libasound2 libpangocairo-1.0-0 libpango-1.0-0 \
+    libcairo2 libatspi2.0-0 libgtk-3-0 \
+    && rm -rf /var/lib/apt/lists/*
 
 ENV NODE_ENV=production
 ENV PORT=3000
@@ -31,6 +38,11 @@ COPY --from=builder --chown=nextjs:nodejs /app/.next/static ./.next/static
 
 # Replace bundled better-sqlite3 with the correctly compiled version from deps stage
 COPY --from=deps /app/node_modules/better-sqlite3 /app/node_modules/better-sqlite3
+
+# Copy playwright and install its Chromium browser
+COPY --from=deps /app/node_modules/playwright ./node_modules/playwright
+COPY --from=deps /app/node_modules/playwright-core ./node_modules/playwright-core
+RUN node node_modules/playwright/cli.js install chromium
 
 USER nextjs
 

@@ -8,8 +8,8 @@ const nextConfig: NextConfig = {
       { protocol: "http",  hostname: "**" },
     ],
   },
-  // better-sqlite3 is a native module — don't bundle it
-  serverExternalPackages: ["better-sqlite3"],
+  // native/server-only modules — don't bundle
+  serverExternalPackages: ["better-sqlite3", "playwright"],
 };
 
 export default nextConfig;
