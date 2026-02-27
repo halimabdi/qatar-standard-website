@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { createArticle, getArticleBySourceUrl, getArticleByContentHash, makeContentHash, getDefaultImage } from '@/lib/articles';
+import { createArticle, getArticleBySourceUrl, getArticleByContentHash, makeContentHash, getDefaultImage, getLeastUsedCuratedImage } from '@/lib/articles';
 import slugify from 'slugify';
 
 export const dynamic = 'force-dynamic';
@@ -239,8 +239,8 @@ async function resolveImage(
     if (bingImg) return bingImg;
   }
 
-  // 5. Category default
-  return getDefaultImage(category, source);
+  // 5. DB-aware curated fallback — picks least-used image from category pool
+  return getLeastUsedCuratedImage(category, source);
 }
 
 // ── LLM helper with fallback: OpenAI → Groq ───────────────────────────────────

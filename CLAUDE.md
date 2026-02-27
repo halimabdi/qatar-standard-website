@@ -159,6 +159,17 @@ curl "https://qatar-standard.com/api/articles?limit=20&offset=0&category=diploma
 - **Cloudflare API key**: `9661c78302f23f7e2ce4aae1a38196dfc8e0c` (Global API Key, X-Auth-Key header)
 - **Cloudflare email**: `halim.abdihalim@gmail.com`
 
+## NordVPN + Web Traffic (IMPORTANT)
+Server runs NordVPN (UAE) for Twitter posting. NordVPN routes all non-allowlisted traffic through the VPN tunnel (table 205), which breaks inbound web traffic on ports 80/443 — responses are sent through the VPN instead of back to the requester.
+
+**Fix applied**: iptables connmark rules in `/etc/network/if-up.d/nordvpn-webports` mark port 80/443 connections with `0xe1f1` (NordVPN bypass mark) so replies route through eth0 directly.
+
+**NordVPN allowlist**: ports 22, 80, 443, 41641 (SSH, HTTP, HTTPS, Tailscale) — run `nordvpn allowlist add port 80` / `443` if reset.
+
+**NordVPN firewall**: Keep disabled (`nordvpn set firewall off`) — UFW handles firewall rules. NordVPN firewall sets `iptables INPUT policy DROP` which overrides UFW and breaks everything.
+
+If site goes down with 522 error, check: `nordvpn settings | grep Firewall` (should be disabled) and `iptables -t mangle -L PREROUTING -n | grep CONNMARK` (should have 3 rules).
+
 ## Traefik Routing
 - **Container**: `qatar-standard-website` on `coolify` network
 - SSL via Traefik letsencrypt certresolver (labels on Docker container)

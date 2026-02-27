@@ -32,7 +32,7 @@ export default function ArticleCard({ article, size = 'md' }: Props) {
   const isAr = lang === 'ar';
 
   const cleanMd    = (s: string) => s.replace(/\*\*/g, '').replace(/^#+\s*/gm, '').trim();
-  const fallbackImg = getDefaultImage(article.category, article.source);
+  const fallbackImg = getDefaultImage(article.category, article.source, article.id);
   const imgSrc = article.image_url || fallbackImg;
   const onImgError = (e: React.SyntheticEvent<HTMLImageElement>) => { e.currentTarget.src = fallbackImg; };
   const title   = cleanMd(isAr ? (article.title_ar || article.title_en || '') : (article.title_en || article.title_ar || ''));

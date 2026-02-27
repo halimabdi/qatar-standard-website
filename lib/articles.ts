@@ -99,6 +99,26 @@ export function createArticle(data: Omit<Article, 'id' | 'created_at'>): Article
   return db.prepare(`SELECT * FROM articles WHERE slug = ?`).get(data.slug) as Article;
 }
 
+/** Server-side only: pick the least-used curated image from the category pool. */
+export function getLeastUsedCuratedImage(category: string, source: string): string {
+  const pool = CATEGORY_IMAGES[category];
+  if (!pool || pool.length === 0) {
+    return source === 'bot' ? '/qatar-breaking-news.png' : '/qatar-standard-logo.png';
+  }
+  if (pool.length === 1) return pool[0];
+  try {
+    const db = getDb();
+    const counts = pool.map(img => {
+      const row = db.prepare('SELECT COUNT(*) as n FROM articles WHERE image_url = ?').get(img) as { n: number };
+      return { img, n: row?.n ?? 0 };
+    });
+    counts.sort((a, b) => a.n - b.n);
+    return counts[0].img;
+  } catch {
+    return pool[Math.floor(Math.random() * pool.length)];
+  }
+}
+
 export function countArticles(category?: string): number {
   const db = getDb();
   if (category && category !== 'all') {

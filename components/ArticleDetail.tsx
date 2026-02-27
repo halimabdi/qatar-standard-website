@@ -62,7 +62,7 @@ export default function ArticleDetail({ article, related }: Props) {
   const publishedDate = formatDateTime(article.published_at, lang);
   const bodyHtml      = renderMarkdown(body);
 
-  const fallbackImg = getDefaultImage(article.category, article.source);
+  const fallbackImg = getDefaultImage(article.category, article.source, article.id);
   const heroImg     = article.image_url || fallbackImg;
 
   const src       = sourceLabel(article.source, article.source_url);
