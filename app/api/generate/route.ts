@@ -121,7 +121,7 @@ async function scrapeOgImage(url: string): Promise<string | null> {
 
 // SerpAPI image search — separate daily budget from research quota
 const serpImageUsed = { date: '', count: 0 };
-const SERP_IMAGE_MAX_PER_DAY = 15;
+const SERP_IMAGE_MAX_PER_DAY = 20;
 
 async function serpImageSearch(query: string): Promise<string | null> {
   const serpKey = process.env.SERP_API_KEY;
@@ -170,41 +170,22 @@ async function serpImageSearch(query: string): Promise<string | null> {
   return null;
 }
 
-// Bing Images fetch-based search (no Playwright — parses HTML data-m JSON)
-async function bingImageSearch(query: string): Promise<string | null> {
+// Scrape og:image from the first SerpAPI news result link
+async function serpNewsOgImage(query: string): Promise<string | null> {
+  const serpKey = process.env.SERP_API_KEY;
+  if (!serpKey) return null;
   try {
-    const url = `https://www.bing.com/images/search?q=${encodeURIComponent(query.slice(0, 80))}&form=HDRSC2&first=1`;
-    const res = await fetch(url, {
-      signal: AbortSignal.timeout(10000),
-      headers: {
-        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
-        'Accept': 'text/html,application/xhtml+xml',
-        'Accept-Language': 'en-US,en;q=0.9',
-      },
-    });
+    const url = `https://serpapi.com/search.json?engine=google&q=${encodeURIComponent(query)}&tbm=nws&num=3&api_key=${serpKey}`;
+    const res = await fetch(url, { signal: AbortSignal.timeout(8000) });
     if (!res.ok) return null;
-    const html = await res.text();
-
-    // Bing embeds image metadata in data-m="..." JSON on .iusc elements
-    // murl = master (original) image URL, turl = thumbnail
-    const murls: string[] = [];
-    const dataMRegex = /data-m="([^"]+)"/g;
-    let match;
-    while ((match = dataMRegex.exec(html)) !== null) {
-      try {
-        const decoded = match[1].replace(/&amp;/g, '&').replace(/&quot;/g, '"');
-        const obj = JSON.parse(decoded);
-        const murl: string = obj.murl || obj.turl || '';
-        if (murl.startsWith('http') && murl.length > 40 &&
-            !murl.includes('bing.com') && !murl.includes('microsoft.com') &&
-            !murl.includes('gstatic.com')) {
-          murls.push(murl);
-        }
-      } catch { /* skip bad JSON */ }
-    }
-    if (murls.length > 0) {
-      console.log(`[IMAGE] Bing found ${murls.length} images, using first`);
-      return murls[0];
+    const data = await res.json();
+    for (const r of (data?.news_results || [])) {
+      if (!r.link) continue;
+      const img = await scrapeOgImage(r.link);
+      if (img) {
+        console.log(`[IMAGE] og:image scraped from news result: ${r.link.slice(0, 60)}`);
+        return img;
+      }
     }
   } catch { /* fall through */ }
   return null;
@@ -233,10 +214,10 @@ async function resolveImage(
     if (serpImg) return serpImg;
   }
 
-  // 4. Bing Images fetch fallback
+  // 4. Scrape og:image from first SerpAPI news result URL
   if (searchQuery) {
-    const bingImg = await bingImageSearch(searchQuery);
-    if (bingImg) return bingImg;
+    const newsOg = await serpNewsOgImage(searchQuery);
+    if (newsOg) return newsOg;
   }
 
   // 5. No image found — return empty so article stores null and shows gradient placeholder
