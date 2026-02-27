@@ -150,15 +150,15 @@ export default function ArticleDetail({ article, related }: Props) {
             )}
           </div>
 
-          {/* Hero image / video */}
-          {/\.(mp4|webm|mov)(\?.*)?$/i.test(heroImg) ? (
+          {/* Hero media: video player if video_url exists, otherwise image */}
+          {article.video_url ? (
             <div className="rounded-xl overflow-hidden mb-6 aspect-[16/9] bg-black">
               <video
-                src={heroImg}
+                src={article.video_url}
                 controls
                 playsInline
                 className="w-full h-full"
-                poster={fallbackImg}
+                poster={heroImg}
               />
             </div>
           ) : (

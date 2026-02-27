@@ -290,6 +290,7 @@ export async function POST(req: NextRequest) {
     tweet_en?: string;
     context?: string;
     image_url?: string;
+    video_url?: string;
     source_url?: string;
     speaker?: { name: string; title: string } | null;
     category?: string;
@@ -434,6 +435,7 @@ export async function POST(req: NextRequest) {
     content_hash: contentHash,
     tweet_ar:     body.tweet_ar || null,
     tweet_en:     body.tweet_en || null,
+    video_url:     body.video_url || null,
     speaker_name:  body.speaker?.name  || null,
     speaker_title: body.speaker?.title || null,
     published_at:  body.published_at || new Date().toISOString(),

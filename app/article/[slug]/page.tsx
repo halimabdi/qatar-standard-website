@@ -16,8 +16,7 @@ export async function generateMetadata(
 
   const title       = article.title_en || article.title_ar;
   const description = article.excerpt_en || article.excerpt_ar || '';
-  const isVideo     = /\.(mp4|webm|mov)$/i.test(article.image_url || '');
-  const image       = isVideo ? '/qatar-standard-logo.png' : (article.image_url || '/qatar-standard-logo.png');
+  const image       = article.image_url || '/qatar-standard-logo.png';
   const url         = `${SITE_URL}/article/${slug}`;
 
   return {

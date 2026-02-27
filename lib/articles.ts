@@ -13,6 +13,7 @@ export interface Article {
   excerpt_en: string | null;
   category: string;
   image_url: string | null;
+  video_url: string | null;
   source: string;
   source_url: string | null;
   content_hash: string | null;
@@ -87,11 +88,11 @@ export function createArticle(data: Omit<Article, 'id' | 'created_at'>): Article
   db.prepare(`
     INSERT OR IGNORE INTO articles
       (slug, title_ar, title_en, body_ar, body_en, excerpt_ar, excerpt_en,
-       category, image_url, source, source_url, content_hash,
+       category, image_url, video_url, source, source_url, content_hash,
        tweet_ar, tweet_en, speaker_name, speaker_title, published_at)
     VALUES
       (@slug, @title_ar, @title_en, @body_ar, @body_en, @excerpt_ar, @excerpt_en,
-       @category, @image_url, @source, @source_url, @content_hash,
+       @category, @image_url, @video_url, @source, @source_url, @content_hash,
        @tweet_ar, @tweet_en, @speaker_name, @speaker_title, @published_at)
   `).run(data);
 
