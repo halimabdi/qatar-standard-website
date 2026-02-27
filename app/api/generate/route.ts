@@ -170,20 +170,24 @@ async function serpImageSearch(query: string): Promise<string | null> {
   return null;
 }
 
-// Scrape og:image from the first SerpAPI news result link
+// Scrape og:image from the first SerpAPI news result link (shares daily budget)
 async function serpNewsOgImage(query: string): Promise<string | null> {
   const serpKey = process.env.SERP_API_KEY;
   if (!serpKey) return null;
+  const today = new Date().toISOString().slice(0, 10);
+  if (serpImageUsed.date !== today) { serpImageUsed.date = today; serpImageUsed.count = 0; }
+  if (serpImageUsed.count >= SERP_IMAGE_MAX_PER_DAY) return null;
   try {
     const url = `https://serpapi.com/search.json?engine=google&q=${encodeURIComponent(query)}&tbm=nws&num=3&api_key=${serpKey}`;
     const res = await fetch(url, { signal: AbortSignal.timeout(8000) });
     if (!res.ok) return null;
     const data = await res.json();
+    serpImageUsed.count++;
     for (const r of (data?.news_results || [])) {
       if (!r.link) continue;
       const img = await scrapeOgImage(r.link);
       if (img) {
-        console.log(`[IMAGE] og:image scraped from news result: ${r.link.slice(0, 60)}`);
+        console.log(`[IMAGE] og:image scraped from news result (${serpImageUsed.count}/${SERP_IMAGE_MAX_PER_DAY}): ${r.link.slice(0, 60)}`);
         return img;
       }
     }
