@@ -1,6 +1,6 @@
 'use client';
 import type { Article } from '@/lib/articles';
-import { CATEGORIES_AR, CATEGORIES_EN, getDefaultImage } from '@/lib/categories';
+import { CATEGORIES_AR, CATEGORIES_EN } from '@/lib/categories';
 import ArticleCard from './ArticleCard';
 import Link from 'next/link';
 import { useLang } from '@/contexts/LanguageContext';
@@ -62,8 +62,7 @@ export default function ArticleDetail({ article, related }: Props) {
   const publishedDate = formatDateTime(article.published_at, lang);
   const bodyHtml      = renderMarkdown(body);
 
-  const fallbackImg = getDefaultImage(article.category, article.source, article.id);
-  const heroImg     = article.image_url || fallbackImg;
+  const heroImg     = article.image_url || null;
 
   const src       = sourceLabel(article.source, article.source_url);
   const altBody   = isAr ? (article.body_en || '') : (article.body_ar || '');
@@ -161,11 +160,11 @@ export default function ArticleDetail({ article, related }: Props) {
                 poster={heroImg}
               />
             </div>
-          ) : (
+          ) : heroImg ? (
             <div className="rounded-xl overflow-hidden mb-6 aspect-[16/9] bg-gray-100">
-              <img src={heroImg} alt={title} onError={(e) => { e.currentTarget.src = fallbackImg; }} className="w-full h-full object-cover" />
+              <img src={heroImg} alt={title} onError={(e) => { e.currentTarget.style.display = 'none'; e.currentTarget.parentElement!.classList.add('hidden'); }} className="w-full h-full object-cover" />
             </div>
-          )}
+          ) : null}
 
           {/* Body */}
           <div

@@ -239,8 +239,8 @@ async function resolveImage(
     if (bingImg) return bingImg;
   }
 
-  // 5. DB-aware curated fallback — picks least-used image from category pool
-  return getLeastUsedCuratedImage(category, source);
+  // 5. No image found — return empty so article stores null and shows gradient placeholder
+  return '';
 }
 
 // ── LLM helper with fallback: OpenAI → Groq ───────────────────────────────────
