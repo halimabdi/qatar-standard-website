@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { createArticle, getArticleBySourceUrl, getArticleByContentHash, makeContentHash, getDefaultImage, getLeastUsedCuratedImage } from '@/lib/articles';
+import { createArticle, getArticleBySourceUrl, getArticleByContentHash, makeContentHash } from '@/lib/articles';
 import slugify from 'slugify';
 
 export const dynamic = 'force-dynamic';
@@ -120,6 +120,7 @@ async function scrapeOgImage(url: string): Promise<string | null> {
 }
 
 // SerpAPI image search — separate daily budget from research quota
+// One tbm=nws call handles both thumbnail check AND og:image scraping from result links.
 const serpImageUsed = { date: '', count: 0 };
 const SERP_IMAGE_MAX_PER_DAY = 20;
 
@@ -132,28 +133,41 @@ async function serpImageSearch(query: string): Promise<string | null> {
   if (serpImageUsed.count >= SERP_IMAGE_MAX_PER_DAY) return null;
 
   try {
-    // Try news thumbnails first (more relevant, same quota pool)
+    // Step A: One SerpAPI news call — thumbnail check + og:image scraping (1 credit)
     const nwsUrl = `https://serpapi.com/search.json?engine=google&q=${encodeURIComponent(query)}&tbm=nws&num=5&api_key=${serpKey}`;
     const nwsRes = await fetch(nwsUrl, { signal: AbortSignal.timeout(8000) });
     if (nwsRes.ok) {
       const nwsData = await nwsRes.json();
-      // Skip serpapi.com and gstatic redirects — they expire. Only use direct source URLs.
-      const directThumb = (nwsData?.news_results || [])
-        .map((r: { thumbnail?: string }) => r.thumbnail)
-        .find((t: string | undefined) =>
+      serpImageUsed.count++;
+      const newsResults: Array<{ thumbnail?: string; link?: string }> = nwsData?.news_results || [];
+
+      // A1: Direct thumbnail (non-expiring source URL)
+      const directThumb = newsResults
+        .map(r => r.thumbnail)
+        .find(t =>
           t?.startsWith('http') &&
           !t.includes('serpapi.com') &&
           !t.includes('gstatic.com') &&
           !t.includes('google.com/s2')
         );
       if (directThumb) {
-        serpImageUsed.count++;
         console.log(`[IMAGE] SerpAPI news thumbnail found (${serpImageUsed.count}/${SERP_IMAGE_MAX_PER_DAY})`);
         return directThumb;
       }
+
+      // A2: Scrape og:image from news result links (no extra API credit — reuses same response)
+      for (const r of newsResults) {
+        if (!r.link) continue;
+        const img = await scrapeOgImage(r.link);
+        if (img) {
+          console.log(`[IMAGE] og:image scraped from news result (${serpImageUsed.count}/${SERP_IMAGE_MAX_PER_DAY}): ${r.link.slice(0, 60)}`);
+          return img;
+        }
+      }
     }
 
-    // Fallback: Google Images
+    // Step B: Fallback — Google Images (1 more credit)
+    if (serpImageUsed.count >= SERP_IMAGE_MAX_PER_DAY) return null;
     const imgUrl = `https://serpapi.com/search.json?engine=google&q=${encodeURIComponent(query)}&tbm=isch&num=5&safe=active&api_key=${serpKey}`;
     const imgRes = await fetch(imgUrl, { signal: AbortSignal.timeout(8000) });
     if (!imgRes.ok) return null;
@@ -164,31 +178,6 @@ async function serpImageSearch(query: string): Promise<string | null> {
       if (src?.startsWith('http') && !src.includes('gstatic') && !src.includes('google.com')) {
         console.log(`[IMAGE] SerpAPI image found (${serpImageUsed.count}/${SERP_IMAGE_MAX_PER_DAY})`);
         return src;
-      }
-    }
-  } catch { /* fall through */ }
-  return null;
-}
-
-// Scrape og:image from the first SerpAPI news result link (shares daily budget)
-async function serpNewsOgImage(query: string): Promise<string | null> {
-  const serpKey = process.env.SERP_API_KEY;
-  if (!serpKey) return null;
-  const today = new Date().toISOString().slice(0, 10);
-  if (serpImageUsed.date !== today) { serpImageUsed.date = today; serpImageUsed.count = 0; }
-  if (serpImageUsed.count >= SERP_IMAGE_MAX_PER_DAY) return null;
-  try {
-    const url = `https://serpapi.com/search.json?engine=google&q=${encodeURIComponent(query)}&tbm=nws&num=3&api_key=${serpKey}`;
-    const res = await fetch(url, { signal: AbortSignal.timeout(8000) });
-    if (!res.ok) return null;
-    const data = await res.json();
-    serpImageUsed.count++;
-    for (const r of (data?.news_results || [])) {
-      if (!r.link) continue;
-      const img = await scrapeOgImage(r.link);
-      if (img) {
-        console.log(`[IMAGE] og:image scraped from news result (${serpImageUsed.count}/${SERP_IMAGE_MAX_PER_DAY}): ${r.link.slice(0, 60)}`);
-        return img;
       }
     }
   } catch { /* fall through */ }
@@ -212,19 +201,13 @@ async function resolveImage(
     if (og) return og;
   }
 
-  // 3. SerpAPI — news thumbnail or Google Images
+  // 3. SerpAPI — news thumbnail, og:image from news links, or Google Images (single call for news)
   if (searchQuery) {
     const serpImg = await serpImageSearch(searchQuery);
     if (serpImg) return serpImg;
   }
 
-  // 4. Scrape og:image from first SerpAPI news result URL
-  if (searchQuery) {
-    const newsOg = await serpNewsOgImage(searchQuery);
-    if (newsOg) return newsOg;
-  }
-
-  // 5. No image found — return empty so article stores null and shows gradient placeholder
+  // 4. No image found — return empty so article stores null and shows gradient placeholder
   return '';
 }
 
