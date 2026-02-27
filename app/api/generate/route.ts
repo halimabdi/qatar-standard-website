@@ -55,8 +55,14 @@ async function serpNewsResearch(query: string): Promise<string> {
 
 // ── Agent 1: Research — fetch source content + SerpAPI related coverage ───────
 
-async function researchAgent(sourceUrl: string | null | undefined, title: string): Promise<string> {
+async function researchAgent(sourceUrl: string | null | undefined, title: string, playwrightResearch?: string): Promise<string> {
   const parts: string[] = [];
+
+  // 0. Playwright Bing News research passed from bot (richest source — real article snippets)
+  if (playwrightResearch) {
+    parts.push(`Recent news coverage:\n${playwrightResearch}`);
+    console.log(`[research] Using Playwright research (${playwrightResearch.length} chars)`);
+  }
 
   // 1. Fetch source article if URL provided
   if (sourceUrl) {
@@ -79,9 +85,8 @@ async function researchAgent(sourceUrl: string | null | undefined, title: string
     } catch { /* skip */ }
   }
 
-  // 2. SerpAPI: find related news coverage to give writers real facts & context
-  // Especially valuable when there's no source URL (Telegram posts, tweet-only content)
-  const needsResearch = !sourceUrl || parts.length === 0;
+  // 2. SerpAPI fallback — only when no Playwright research and no source URL
+  const needsResearch = !playwrightResearch && (!sourceUrl || parts.length === 0);
   if (needsResearch && title) {
     const related = await serpNewsResearch(title);
     if (related) parts.push(`Related news coverage:\n${related}`);
@@ -114,11 +119,54 @@ async function scrapeOgImage(url: string): Promise<string | null> {
   }
 }
 
-// Full image resolution pipeline — SerpAPI quota reserved for research, not images
+// SerpAPI image search — separate daily budget from research quota
+const serpImageUsed = { date: '', count: 0 };
+const SERP_IMAGE_MAX_PER_DAY = 15;
+
+async function serpImageSearch(query: string): Promise<string | null> {
+  const serpKey = process.env.SERP_API_KEY;
+  if (!serpKey) return null;
+
+  const today = new Date().toISOString().slice(0, 10);
+  if (serpImageUsed.date !== today) { serpImageUsed.date = today; serpImageUsed.count = 0; }
+  if (serpImageUsed.count >= SERP_IMAGE_MAX_PER_DAY) return null;
+
+  try {
+    // Try news thumbnails first (more relevant, same quota pool)
+    const nwsUrl = `https://serpapi.com/search.json?engine=google&q=${encodeURIComponent(query)}&tbm=nws&num=5&api_key=${serpKey}`;
+    const nwsRes = await fetch(nwsUrl, { signal: AbortSignal.timeout(8000) });
+    if (nwsRes.ok) {
+      const nwsData = await nwsRes.json();
+      const thumb = nwsData?.news_results?.find((r: { thumbnail?: string }) => r.thumbnail)?.thumbnail;
+      if (thumb?.startsWith('http')) {
+        serpImageUsed.count++;
+        console.log(`[IMAGE] SerpAPI news thumbnail found (${serpImageUsed.count}/${SERP_IMAGE_MAX_PER_DAY})`);
+        return thumb;
+      }
+    }
+
+    // Fallback: Google Images
+    const imgUrl = `https://serpapi.com/search.json?engine=google&q=${encodeURIComponent(query)}&tbm=isch&num=5&safe=active&api_key=${serpKey}`;
+    const imgRes = await fetch(imgUrl, { signal: AbortSignal.timeout(8000) });
+    if (!imgRes.ok) return null;
+    const imgData = await imgRes.json();
+    serpImageUsed.count++;
+    for (const r of (imgData?.images_results || [])) {
+      const src = r.original || r.thumbnail;
+      if (src?.startsWith('http') && !src.includes('gstatic') && !src.includes('google.com')) {
+        console.log(`[IMAGE] SerpAPI image found (${serpImageUsed.count}/${SERP_IMAGE_MAX_PER_DAY})`);
+        return src;
+      }
+    }
+  } catch { /* fall through */ }
+  return null;
+}
+
+// Full image resolution pipeline
 async function resolveImage(
   provided: string | null,
   sourceUrl: string | null,
-  _searchQuery: string,
+  searchQuery: string,
   category: string,
   source: string,
 ): Promise<string> {
@@ -131,7 +179,13 @@ async function resolveImage(
     if (og) return og;
   }
 
-  // 3. Category default — SerpAPI quota reserved for article research
+  // 3. SerpAPI — news thumbnail or Google Images
+  if (searchQuery) {
+    const serpImg = await serpImageSearch(searchQuery);
+    if (serpImg) return serpImg;
+  }
+
+  // 4. Category default
   return getDefaultImage(category, source);
 }
 
@@ -212,7 +266,8 @@ async function writerAgents(opts: {
 - خلاصة بمنظور قطري
 - لا تستخدم: يُجسّد، يُرسّخ، يُسلّط الضوء، مما يعكس، في ظل، تجدر الإشارة
 - لا تذكر أنك ذكاء اصطناعي
-- اكتب الفقرات فقط بدون عناوين`,
+- اكتب الفقرات فقط بدون عناوين أو نقاط أو تنسيق مارك داون (**) أو مسميات مثل "المقدمة" أو "الخلاصة"
+- النص العادي فقط — يجب أن يبدو كمقال في صحيفة`,
       },
       {
         role: 'user',
@@ -230,7 +285,9 @@ Rules:
 - Specific details, numbers, and facts from the source
 - Conclusion with Qatar/Gulf perspective
 - No AI filler phrases: "it is worth noting", "in light of", "this reflects", "underscores"
-- Write paragraphs only, no headers or bullet points`,
+- Write paragraphs only — NO headers, NO bold (**), NO markdown, NO bullet points
+- Do NOT write section labels like "Introduction", "Background", "Conclusion"
+- Plain prose only — it must read like a newspaper article`,
       },
       {
         role: 'user',
@@ -259,7 +316,7 @@ async function editorAgent(body_ar: string, body_en: string): Promise<{ body_ar:
       callLLM([
         {
           role: 'system',
-          content: `You are a copy editor. Review the English article and fix: any AI clichés, repetition, numbered headers. Return only the cleaned text without comment.`,
+          content: `You are a copy editor. Review the English article and fix: any AI clichés, repetition, markdown bold (**text**), section headers (Introduction, Conclusion, Background), bullet points, or numbered lists. The output must be plain prose paragraphs only — like a newspaper article. Return only the cleaned text without comment.`,
         },
         { role: 'user', content: body_en },
       ], { temperature: 0.2, large: false }),
@@ -289,6 +346,7 @@ export async function POST(req: NextRequest) {
     tweet_ar?: string;
     tweet_en?: string;
     context?: string;
+    research?: string;
     image_url?: string;
     video_url?: string;
     source_url?: string;
@@ -367,8 +425,8 @@ export async function POST(req: NextRequest) {
 
   if (!body_ar || !body_en) {
     try {
-      // Agent 1: Research — fetch source + SerpAPI related coverage
-      const sourceContent = await researchAgent(source_url, title_en);
+      // Agent 1: Research — Playwright Bing News (from bot) + source URL + SerpAPI fallback
+      const sourceContent = await researchAgent(source_url, title_en, body.research);
 
       // Agents 3+4: Write Arabic + English
       const written = await writerAgents({
