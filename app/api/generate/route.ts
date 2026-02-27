@@ -184,6 +184,58 @@ async function serpImageSearch(query: string): Promise<string | null> {
   return null;
 }
 
+// ── Wikimedia Commons image search — free, no API key ─────────────────────────
+async function wikimediaImageSearch(query: string): Promise<string | null> {
+  try {
+    // Use first 5 words of title as search terms — full titles return poor results
+    const shortQuery = query.split(/\s+/).slice(0, 5).join(' ');
+    const searchUrl = `https://commons.wikimedia.org/w/api.php?action=query&list=search&srsearch=${encodeURIComponent(shortQuery)}&srnamespace=6&format=json&srlimit=5&origin=*`;
+    const res = await fetch(searchUrl, { signal: AbortSignal.timeout(8000) });
+    if (!res.ok) return null;
+    const data = await res.json();
+    const hits: Array<{ title?: string }> = data?.query?.search || [];
+    for (const hit of hits) {
+      if (!hit.title) continue;
+      // Get the actual image URL via imageinfo
+      const infoUrl = `https://commons.wikimedia.org/w/api.php?action=query&titles=${encodeURIComponent(hit.title)}&prop=imageinfo&iiprop=url&iiurlwidth=1200&format=json&origin=*`;
+      const infoRes = await fetch(infoUrl, { signal: AbortSignal.timeout(6000) });
+      if (!infoRes.ok) continue;
+      const infoData = await infoRes.json();
+      const pages = Object.values((infoData?.query?.pages || {}) as Record<string, { imageinfo?: Array<{ thumburl?: string; url?: string }> }>);
+      for (const page of pages) {
+        const url = page.imageinfo?.[0]?.thumburl || page.imageinfo?.[0]?.url;
+        if (url?.startsWith('http') && /\.(jpe?g|png|webp)/i.test(url)) {
+          console.log(`[IMAGE] Wikimedia Commons: ${hit.title}`);
+          return url;
+        }
+      }
+    }
+  } catch { /* fall through */ }
+  return null;
+}
+
+// ── Pexels image search — needs PEXELS_API_KEY ────────────────────────────────
+async function pexelsImageSearch(query: string): Promise<string | null> {
+  const pexelsKey = process.env.PEXELS_API_KEY;
+  if (!pexelsKey) return null;
+  try {
+    const shortQuery = query.split(/\s+/).slice(0, 5).join(' ');
+    const res = await fetch(`https://api.pexels.com/v1/search?query=${encodeURIComponent(shortQuery)}&per_page=5&orientation=landscape`, {
+      headers: { Authorization: pexelsKey },
+      signal: AbortSignal.timeout(8000),
+    });
+    if (!res.ok) return null;
+    const data = await res.json();
+    const photo = (data?.photos || [])[0];
+    const url = photo?.src?.large || photo?.src?.medium;
+    if (url?.startsWith('http')) {
+      console.log(`[IMAGE] Pexels: ${photo.photographer} — ${photo.url}`);
+      return url;
+    }
+  } catch { /* fall through */ }
+  return null;
+}
+
 // Full image resolution pipeline
 async function resolveImage(
   provided: string | null,
@@ -207,7 +259,19 @@ async function resolveImage(
     if (serpImg) return serpImg;
   }
 
-  // 4. No image found — return empty so article stores null and shows gradient placeholder
+  // 4. Wikimedia Commons — free, topic-matched encyclopedia images
+  if (searchQuery) {
+    const wikiImg = await wikimediaImageSearch(searchQuery);
+    if (wikiImg) return wikiImg;
+  }
+
+  // 5. Pexels — stock photos (requires PEXELS_API_KEY)
+  if (searchQuery) {
+    const pexelsImg = await pexelsImageSearch(searchQuery);
+    if (pexelsImg) return pexelsImg;
+  }
+
+  // 6. No image found — return empty so article stores null and shows gradient placeholder
   return '';
 }
 

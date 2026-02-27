@@ -128,7 +128,9 @@ articles (
 2. `og:image` scraped from `source_url`
 3. SerpAPI: one `tbm=nws` call → check direct thumbnail → scrape `og:image` from result links
 4. SerpAPI: `tbm=isch` Google Images fallback
-5. Returns `''` — article stores `null`, UI shows category gradient placeholder
+5. Wikimedia Commons API: free search by article title keywords (first 5 words)
+6. Pexels API: stock photo search (requires `PEXELS_API_KEY` env var)
+7. Returns `''` — article stores `null`, UI shows category gradient placeholder
 
 **SerpAPI budget:** 20 image searches/day, shared across steps 3+4.
 **SerpAPI free tier:** 100 searches/month — exhausts in ~5 active days.
@@ -213,6 +215,7 @@ GROQ_API_KEY        # Groq llama-3.3-70b (LLM fallback)
 WEBSITE_API_KEY     # Auth key for /api/generate (see security note)
 DB_PATH             # SQLite dir: ./data (dev) / /data (production)
 SERP_API_KEY        # SerpAPI image search (optional, 100 free/month)
+PEXELS_API_KEY      # Pexels stock photo search (optional, free tier 200 req/hr)
 GHOST_URL           # https://cms.qatar-standard.com
 GHOST_CONTENT_KEY   # Ghost Content API key (in .env.local, not here)
 CREWAI_URL          # Optional external article pipeline
