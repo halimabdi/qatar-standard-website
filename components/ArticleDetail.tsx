@@ -157,7 +157,7 @@ export default function ArticleDetail({ article, related }: Props) {
 
           {/* Body */}
           <div
-            className={isAr ? 'prose-ar mb-8 prose prose-lg max-w-none' : 'prose-en mb-8 prose prose-lg max-w-none'}
+            className={isAr ? 'prose-ar mb-8' : 'prose-en mb-8'}
             dir={dir}
             dangerouslySetInnerHTML={{ __html: bodyHtml }}
           />
