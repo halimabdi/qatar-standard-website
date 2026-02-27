@@ -50,6 +50,7 @@ function getDb(): Database.Database {
   const cols = (db.prepare(`PRAGMA table_info(articles)`).all() as Array<{ name: string }>).map(c => c.name);
   if (!cols.includes('source_url'))   db.exec(`ALTER TABLE articles ADD COLUMN source_url TEXT`);
   if (!cols.includes('content_hash')) db.exec(`ALTER TABLE articles ADD COLUMN content_hash TEXT`);
+  if (!cols.includes('tweeted_at'))   db.exec(`ALTER TABLE articles ADD COLUMN tweeted_at DATETIME NULL`);
 
   // Unique index for deduplication — ignore if already exists
   try { db.exec(`CREATE UNIQUE INDEX idx_articles_content_hash ON articles(content_hash) WHERE content_hash IS NOT NULL`); } catch {}
