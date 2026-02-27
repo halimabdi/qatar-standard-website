@@ -120,6 +120,11 @@ export function getLeastUsedCuratedImage(category: string, source: string): stri
   }
 }
 
+export function markArticleTweeted(slug: string): void {
+  const db = getDb();
+  db.prepare(`UPDATE articles SET tweeted_at = datetime('now') WHERE slug = ?`).run(slug);
+}
+
 export function countArticles(category?: string): number {
   const db = getDb();
   if (category && category !== 'all') {
