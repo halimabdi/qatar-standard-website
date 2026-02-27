@@ -1,5 +1,6 @@
 import getDb from './db';
 import crypto from 'crypto';
+import { CATEGORY_IMAGES } from './categories';
 export { getDefaultImage, CATEGORY_IMAGES } from './categories';
 
 export interface Article {
