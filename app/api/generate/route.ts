@@ -137,11 +137,19 @@ async function serpImageSearch(query: string): Promise<string | null> {
     const nwsRes = await fetch(nwsUrl, { signal: AbortSignal.timeout(8000) });
     if (nwsRes.ok) {
       const nwsData = await nwsRes.json();
-      const thumb = nwsData?.news_results?.find((r: { thumbnail?: string }) => r.thumbnail)?.thumbnail;
-      if (thumb?.startsWith('http')) {
+      // Skip serpapi.com and gstatic redirects — they expire. Only use direct source URLs.
+      const directThumb = (nwsData?.news_results || [])
+        .map((r: { thumbnail?: string }) => r.thumbnail)
+        .find((t: string | undefined) =>
+          t?.startsWith('http') &&
+          !t.includes('serpapi.com') &&
+          !t.includes('gstatic.com') &&
+          !t.includes('google.com/s2')
+        );
+      if (directThumb) {
         serpImageUsed.count++;
         console.log(`[IMAGE] SerpAPI news thumbnail found (${serpImageUsed.count}/${SERP_IMAGE_MAX_PER_DAY})`);
-        return thumb;
+        return directThumb;
       }
     }
 
