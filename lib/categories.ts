@@ -28,9 +28,9 @@ export const CATEGORY_KEYS = Object.keys(CATEGORIES_EN);
 
 // Category-specific default images — client-safe (no Node.js imports)
 export const CATEGORY_IMAGES: Record<string, string> = {
-  palestine:  '/curated/palestine_crowd.jpg',
+  palestine:  '/curated/gaza_conflict.jpg',
   gulf:       '/curated/doha_skyline.jpg',
-  diplomacy:  '/curated/doha_skyline.jpg',
+  diplomacy:  '/curated/un_diplomacy.jpg',
   economy:    '/curated/economy_finance.jpg',
   politics:   '/curated/emir_tamim.jpg',
   africa:     '/curated/african_union.jpg',
