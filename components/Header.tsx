@@ -61,19 +61,6 @@ export default function Header() {
               {isAr ? 'EN' : 'عربي'}
             </button>
 
-            {/* Desktop nav */}
-            <nav className="hidden md:flex gap-1">
-              {NAV.map(n => (
-                <Link
-                  key={n.href}
-                  href={n.href}
-                  className="px-3 py-2 text-sm font-medium text-gray-700 hover:text-maroon-800 hover:bg-maroon-50 rounded transition-colors"
-                >
-                  {isAr ? n.ar : n.en}
-                </Link>
-              ))}
-            </nav>
-
             {/* Mobile burger */}
             <button
               className="md:hidden p-2 rounded text-gray-600"
@@ -106,7 +93,7 @@ export default function Header() {
         )}
       </div>
 
-      {/* Category strip */}
+      {/* Category strip — primary nav on all screen sizes */}
       <div className="border-t border-maroon-800 bg-maroon-800">
         <div className="max-w-7xl mx-auto px-4 overflow-x-auto scrollbar-hide">
           <div className="flex gap-0 text-xs text-white/90 whitespace-nowrap">
@@ -114,7 +101,7 @@ export default function Header() {
               <Link
                 key={n.href}
                 href={n.href}
-                className="px-4 py-1.5 hover:bg-maroon-700 hover:text-white transition-colors font-medium"
+                className="px-4 py-2 hover:bg-maroon-700 hover:text-white transition-colors font-semibold tracking-wide"
               >
                 {isAr ? n.ar : n.en}
               </Link>
