@@ -28,15 +28,15 @@ export const CATEGORY_KEYS = Object.keys(CATEGORIES_EN);
 
 // Category-specific default images — client-safe (no Node.js imports)
 export const CATEGORY_IMAGES: Record<string, string> = {
-  palestine:  '/curated/palestine_protest.jpg',
+  palestine:  '/curated/palestine_crowd.jpg',
   gulf:       '/curated/doha_skyline.jpg',
-  diplomacy:  '/curated/qncc_doha_forum.jpg',
-  economy:    '/curated/qatar_airways.jpg',
+  diplomacy:  '/curated/doha_skyline.jpg',
+  economy:    '/curated/economy_finance.jpg',
   politics:   '/curated/emir_tamim.jpg',
-  africa:     '/curated/doha_skyline.jpg',
-  turkey:     '/curated/doha_skyline.jpg',
+  africa:     '/curated/african_union.jpg',
+  turkey:     '/curated/turkey.jpg',
   media:      '/curated/aljazeera_hq.jpg',
-  general:    '/qatar-breaking-news.png',
+  general:    '/curated/doha_skyline.jpg',
 };
 
 export function getDefaultImage(category: string, source: string): string {
