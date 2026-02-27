@@ -310,7 +310,7 @@ export async function POST(req: NextRequest) {
   const category   = body.category || 'general';
   const source     = body.source || 'bot';
   const title_ar   = stripMd(body.title_ar || body.title);
-  const title_en   = stripMd(body.title_en || body.title);
+  let   title_en   = stripMd(body.title_en || body.title);
   const source_url = body.source_url || null;
 
   // ── Deduplication ────────────────────────────────────────────────────────
@@ -329,7 +329,7 @@ export async function POST(req: NextRequest) {
   }
 
   // ── Agent pipeline ────────────────────────────────────────────────────────
-  const slug = makeSlug(title_en);
+  let slug = makeSlug(title_en);
 
   let body_ar = '';
   let body_en = '';
@@ -389,6 +389,21 @@ export async function POST(req: NextRequest) {
       body_ar = body.tweet_ar || body.title;
       body_en = body.tweet_en || body.title;
     }
+  }
+
+  // ── Fix Arabic title_en — generate English headline if title came in as Arabic ─
+  if (/[\u0600-\u06FF]/.test(title_en) && body_en) {
+    try {
+      const headline = await callLLM([
+        { role: 'system', content: 'Write a concise English news headline (max 12 words, no quotes, no period at end) for this article.' },
+        { role: 'user', content: body_en.slice(0, 400) },
+      ], { temperature: 0.2, large: false });
+      if (headline) {
+        title_en = headline.replace(/^["']|["']$/g, '').trim();
+        slug = makeSlug(title_en);
+        console.log(`[generate] Arabic title_en replaced with: "${title_en}"`);
+      }
+    } catch { /* keep original */ }
   }
 
   // ── Image ────────────────────────────────────────────────────────────────
