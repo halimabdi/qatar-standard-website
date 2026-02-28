@@ -241,6 +241,8 @@ async function wikimediaImageSearch(query: string): Promise<string | null> {
     const hits: Array<{ title?: string }> = data?.query?.search || [];
     for (const hit of hits) {
       if (!hit.title) continue;
+      // Skip DjVu, PDF, SVG and other non-photo formats
+      if (/\.(djvu|pdf|svg|tiff?|ogg|ogv|webm|mp4)$/i.test(hit.title)) continue;
       // Get the actual image URL via imageinfo
       const infoUrl = `https://commons.wikimedia.org/w/api.php?action=query&titles=${encodeURIComponent(hit.title)}&prop=imageinfo&iiprop=url&iiurlwidth=1200&format=json&origin=*`;
       const infoRes = await fetch(infoUrl, { signal: AbortSignal.timeout(6000) });
