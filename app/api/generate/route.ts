@@ -637,19 +637,21 @@ export async function POST(req: NextRequest) {
   // Strip journalist lead-ins ("BREAKING:", "Report:", "Sources say:") that
   // confuse image searches, then extract 4-6 key noun words (entities, places).
   function buildImageQuery(title: string): string {
-    // Remove lead-in phrases up to the first comma/colon
+    // Remove common journalist lead-ins that confuse image searches
     let q = title
       .replace(/^(BREAKING|EXCLUSIVE|REPORT|SOURCES?|OFFICIALS?|DEVELOPING)[:\s]+/i, '')
       .replace(/^(breaking news|according to|contradicting media reports?|media reports?,)\s*/i, '')
       .replace(/^(a |an |the )\s*/i, '')
+      // Strip "[Role] states/says/confirms/reports that" clauses
+      .replace(/^[A-Z][^,.]+(official|minister|source|spokesman|spokesperson|general|admiral|senator|diplomat|analyst)\s+(states?|says?|confirms?|reports?|announces?|reveals?|claims?)\s+that\s+/i, '')
+      .replace(/^(us|qatari|israeli|iranian|saudi|turkish|russian|chinese)\s+(official|minister|source|spokesman|general|admiral)\s+[^,.]+(that)\s+/i, '')
       .trim();
 
-    // If the title starts with a verb clause before the real subject, try to find
-    // a proper noun / capitalized sequence that's the actual subject
-    const properNouns = q.match(/\b([A-Z][a-z]+(?:\s+[A-Z][a-z]+)*)\b/g) || [];
+    // Match both ALL-CAPS acronyms (USS, US, NATO, UK, UAE) and Title Case proper nouns,
+    // allowing acronyms to combine with following title-case words (e.g. "USS Ford", "US Embassy")
+    const properNouns = q.match(/\b([A-Z]{2,}(?:\s+[A-Z][a-z]+)*|[A-Z][a-z]+(?:\s+[A-Z][a-z]+)*)\b/g) || [];
     if (properNouns.length >= 2) {
-      // Use the proper nouns as the image search query (max 6 words)
-      return properNouns.slice(0, 4).join(' ');
+      return properNouns.slice(0, 5).join(' ');
     }
 
     // Fallback: first 6 words of cleaned title
