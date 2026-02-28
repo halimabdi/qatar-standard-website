@@ -81,7 +81,7 @@ export function getLatestArticle(): Article | null {
   // Fall back to overall latest only if nothing in preferred categories within last 48h.
   const preferred = db.prepare(`
     SELECT * FROM articles
-    WHERE category IN ('gulf','diplomacy','economy','politics','africa','media','general')
+    WHERE category IN ('gulf','diplomacy','economy','politics','iran','africa','media','general')
       AND image_url IS NOT NULL
       AND image_url NOT LIKE '/curated/%'
       AND image_url NOT LIKE '/qatar%'
@@ -164,6 +164,7 @@ export const CATEGORIES: Record<string, string> = {
   economy:    'اقتصاد',
   politics:   'سياسة',
   gulf:       'خليج',
+  iran:       'إيران',
   media:      'إعلام',
   africa:     'أفريقيا',
   turkey:     'تركيا',

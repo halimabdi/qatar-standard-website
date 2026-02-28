@@ -7,6 +7,7 @@ export const CATEGORIES_AR: Record<string, string> = {
   economy:   'اقتصاد',
   politics:  'سياسة',
   gulf:      'خليج',
+  iran:      'إيران',
   media:     'إعلام',
   turkey:    'تركيا',
   africa:    'أفريقيا',
@@ -19,6 +20,7 @@ export const CATEGORIES_EN: Record<string, string> = {
   economy:   'Economy',
   politics:  'Politics',
   gulf:      'Gulf',
+  iran:      'Iran',
   media:     'Media',
   turkey:    'Turkey',
   africa:    'Africa',
@@ -56,6 +58,11 @@ export const CATEGORY_IMAGES: Record<string, string[]> = {
     '/curated/ras_laffan.jpg',
     '/curated/qatar_airways.jpg',
     '/curated/stock_market.jpg',
+  ],
+  iran: [
+    '/curated/parliament.jpg',
+    '/curated/diplomacy_summit.jpg',
+    '/curated/un_diplomacy.jpg',
   ],
   politics: [
     '/curated/emir_tamim.jpg',
