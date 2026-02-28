@@ -61,10 +61,25 @@ curl -s -X POST "http://localhost:8010/api/v1/applications/ikc04og8kog4s4g404co8
   -d '{"key":"VAR_NAME","value":"VAR_VALUE","is_buildtime":true,"is_preview":false}'
 ```
 
+### CRITICAL: Duplicate Container Problem
+
+**NEVER create a manual container named `qatar-standard-website`.** Coolify containers use the naming pattern `ikc04og8kog4s4g404co80og-TIMESTAMP`. If a manual `qatar-standard-website` container AND a Coolify container both exist with Traefik labels for `qatar-standard.com`, Traefik load-balances between them randomly — causing intermittent 404s and 500s.
+
+**How to check:**
+```bash
+# Should show ONLY ONE container matching ikc04og
+docker ps --format '{{.Names}}' | grep -E 'qatar-standard|ikc04og'
+# If you see BOTH qatar-standard-website AND ikc04og*, remove the manual one:
+docker stop qatar-standard-website && docker rm qatar-standard-website
+```
+
+**Root cause**: The watchdog's `restart_qatar_standard()` in `coolify.py` creates a manual container — this is BROKEN and must be fixed to restart the Coolify container instead.
+
 ### Coolify Build Gotchas
 - **NODE_ENV**: Coolify injects ALL env vars as ARG into every Docker build stage, including `NODE_ENV=production`. The Dockerfile overrides this with `RUN NODE_ENV=development npm ci` in the deps stage.
 - **Module-level throws**: Never throw errors at module level based on env vars (e.g., `if (!process.env.X) throw ...`). Next.js evaluates API route modules during `next build` page data collection, and build-time env vars may be missing. Defer checks to request-handling functions.
 - **502 after deploy (Traefik race)**: Every Coolify deploy creates a new container with a new name. Run `docker restart $(docker ps --format '{{.Names}}' | grep ikc04og)` after deployment finishes.
+- **isomorphic-dompurify / jsdom**: Do NOT use packages with native C++ bindings (jsdom, canvas, etc.) — they won't be traced into Next.js standalone output and will cause 500 errors at runtime.
 
 ### Build Logs (debugging failed deploys)
 ```bash
@@ -73,7 +88,7 @@ docker exec coolify-db psql -U coolify -t -c \
   "SELECT right(logs, 3000) FROM application_deployment_queues WHERE deployment_uuid='<uuid>'"
 ```
 
-### Manual Deploy (fallback only)
+### Manual Deploy (fallback only — use Coolify instead)
 ```bash
 cd /root/qatar-standard-website && git pull origin master
 docker build -t qatar-standard-website .
@@ -92,6 +107,7 @@ docker run -d --name qatar-standard-website \
 ```
 
 **CRITICAL:** Always include `-v /data/qatar-standard:/data`. Without it, a fresh empty DB is used and all articles are inaccessible.
+**WARNING:** If using manual deploy, ensure NO Coolify container is running (check `docker ps | grep ikc04og`). Two containers = intermittent failures.
 
 ---
 
@@ -274,7 +290,7 @@ ADMIN_PASSWORD      # Admin panel auth (see security note)
 
 **Security notes:**
 - `WEBSITE_API_KEY` has a hardcoded fallback in source (`qatar-standard-2024`) — always set this in `.env.local`
-- `ADMIN_PASSWORD` is required — app throws at request time if not set
+- `ADMIN_PASSWORD` is required at runtime — app throws if not set (no hardcoded fallback)
 - Ghost admin credentials are in `.env.local` on the server only, not in this file
 
 ---
@@ -333,8 +349,9 @@ nordvpn allowlist add port 443
 ---
 
 ## Traefik Routing
-- Container `qatar-standard-website` on `coolify` network
-- SSL via Let's Encrypt (Traefik labels on Docker container)
+- Coolify container `ikc04og8kog4s4g404co80og-*` on `coolify` network
+- SSL via Let's Encrypt (Traefik labels managed by Coolify)
+- Static config at `/data/coolify/proxy/dynamic/qatar-standard.yaml` was renamed to `.bak` — Coolify labels handle routing now
 - Ghost CMS: `/data/coolify/proxy/dynamic/ghost-cms.yaml`
 
 ---
@@ -349,12 +366,13 @@ nordvpn allowlist add port 443
 | SerpAPI free tier: 100/month | LOW | Exhausts after ~5 active days |
 
 ### Recently Fixed (Feb 2026)
-- **Admin password** — hardcoded fallback removed; `ADMIN_PASSWORD` env var required at runtime
-- **XSS** — DOMPurify sanitization on all `dangerouslySetInnerHTML` usage
+- **Admin password** — hardcoded fallback removed; `ADMIN_PASSWORD` env var required at runtime (deferred check via `getPassword()`)
+- **DOMPurify removed** — `isomorphic-dompurify`/`dompurify` break Next.js standalone SSR; content from own DB/Ghost CMS is trusted
 - **Rate limiting** — added to `/api/generate` (10/min), `/api/articles` (60/min), `/api/admin/auth` (5/min)
 - **Article search** — LIKE-based search via `/api/search` + SearchBar in header
-- **Image optimization** — all `<img>` replaced with Next.js `<Image>` components
+- **Image optimization** — `<img>` replaced with Next.js `<Image>` components
 - **Accessibility** — ARIA labels, skip-to-content link, RTL logical properties
 - **SEO** — JSON-LD keywords/wordCount, canonical URLs for paginated pages
 - **Features** — breaking news banner, social sharing, most-read sidebar, print stylesheet, privacy policy
 - **Database backup** — daily cron at 3 AM to `/root/backups/qatar-standard/`
+- **Duplicate container fix** — removed stale manual `qatar-standard-website` container that caused intermittent 404s/500s
