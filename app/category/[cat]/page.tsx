@@ -2,7 +2,7 @@ import { getArticles, countArticles, CATEGORIES } from '@/lib/articles';
 import CategoryPage from '@/components/CategoryPage';
 import { notFound } from 'next/navigation';
 
-export const dynamic = 'force-dynamic';
+export const revalidate = 30;
 
 export default async function Page({
   params,

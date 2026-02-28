@@ -73,6 +73,7 @@ export default function ArticleCard({ article, size = 'md' }: Props) {
               src={article.image_url!}
               alt={title}
               onError={() => setImgFailed(true)}
+              fetchPriority="high"
               className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
             />
           ) : (
@@ -108,7 +109,7 @@ export default function ArticleCard({ article, size = 'md' }: Props) {
       <Link href={`/article/${article.slug}`} className="group flex gap-3 py-3 border-b border-gray-100 last:border-0">
         <div className="relative overflow-hidden rounded w-20 h-16 shrink-0 bg-gray-100">
           {hasImg ? (
-            <img src={article.image_url!} alt={title} onError={() => setImgFailed(true)} className="w-full h-full object-cover group-hover:scale-105 transition-transform" />
+            <img src={article.image_url!} alt={title} onError={() => setImgFailed(true)} loading="lazy" className="w-full h-full object-cover group-hover:scale-105 transition-transform" />
           ) : (
             <ImagePlaceholder category={article.category} catLabel={catLabel} />
           )}
@@ -132,6 +133,7 @@ export default function ArticleCard({ article, size = 'md' }: Props) {
             src={article.image_url!}
             alt={title}
             onError={() => setImgFailed(true)}
+            loading="lazy"
             className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
           />
         ) : (

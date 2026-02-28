@@ -2,7 +2,7 @@ import { getArticles, getLatestArticle } from '@/lib/articles';
 import { getGhostPosts } from '@/lib/ghost';
 import HomePage from '@/components/HomePage';
 
-export const dynamic = 'force-dynamic';
+export const revalidate = 30;
 
 export default async function Page() {
   const [hero, recent, latest5, sidebar, ghostPosts] = await Promise.all([
