@@ -233,9 +233,8 @@ async function bingImageSearch(query: string): Promise<string | null> {
 // ── Wikimedia Commons image search — free, no API key ─────────────────────────
 async function wikimediaImageSearch(query: string): Promise<string | null> {
   try {
-    // Use first 5 words of title as search terms — full titles return poor results
-    const shortQuery = query.split(/\s+/).slice(0, 5).join(' ');
-    const searchUrl = `https://commons.wikimedia.org/w/api.php?action=query&list=search&srsearch=${encodeURIComponent(shortQuery)}&srnamespace=6&format=json&srlimit=5&origin=*`;
+    // query is already processed by buildImageQuery — use as-is (max 6 words)
+    const searchUrl = `https://commons.wikimedia.org/w/api.php?action=query&list=search&srsearch=${encodeURIComponent(query)}&srnamespace=6&format=json&srlimit=5&origin=*`;
     const res = await fetch(searchUrl, { signal: AbortSignal.timeout(8000) });
     if (!res.ok) return null;
     const data = await res.json();

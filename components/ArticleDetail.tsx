@@ -28,19 +28,33 @@ function formatDateTime(dateStr: string, lang: 'en' | 'ar'): string {
   }) + ' AST';
 }
 
+// OSINT aggregator channels — content is rewritten by Qatar Standard AI, no external attribution
+const OSINT_CHANNELS = new Set([
+  'warmonitors', 'clashreport', 'intelslava', 'sentdefender', 'disclosetv',
+  'eyeonpal', 'wafanewsagency', 'qudsn', 'gazan', 'gaznow', 'GazaNow',
+]);
+
 function sourceLabel(source: string, source_url: string | null): { label: string; url: string | null } | null {
   if (!source || source === 'manual') return null;
+  // OSINT/aggregator channels: article is AI-rewritten, show Qatar Standard
+  if (OSINT_CHANNELS.has(source)) return { label: 'Qatar Standard', url: null };
   const map: Record<string, string> = {
-    bot:         'Qatar Standard',
-    analysis:    'Qatar Standard Analysis',
-    ghost:       'Qatar Standard',
-    aljazeera:   'Al Jazeera',
-    anadolu:     'Anadolu Agency',
-    reuters:     'Reuters',
-    middleeasteye: 'Middle East Eye',
-    qna:         'Qatar News Agency',
+    bot:              'Qatar Standard',
+    analysis:         'Qatar Standard Analysis',
+    ghost:            'Qatar Standard',
+    aljazeera:        'Al Jazeera',
+    aljazeeraglobal:  'Al Jazeera',
+    ajmubasher:       'Al Jazeera Arabic',
+    anadolu:          'Anadolu Agency',
+    ajanews:          'Anadolu Agency',
+    reuters:          'Reuters',
+    middleeasteye:    'Middle East Eye',
+    MiddleEastEye_TG: 'Middle East Eye',
+    qna:              'Qatar News Agency',
+    qatarnewsagency:  'Qatar News Agency',
   };
-  const label = map[source] || source;
+  const label = map[source] || null;
+  if (!label) return null;
   return { label, url: source_url };
 }
 

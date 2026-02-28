@@ -26,6 +26,8 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 ENV NODE_ENV=production
 ENV PORT=3000
 ENV HOSTNAME=0.0.0.0
+# Fixed browser path so Playwright works regardless of which user runs the app
+ENV PLAYWRIGHT_BROWSERS_PATH=/ms-playwright
 
 RUN groupadd --system --gid 1001 nodejs && useradd --system --uid 1001 --gid nodejs nextjs
 
@@ -39,10 +41,10 @@ COPY --from=builder --chown=nextjs:nodejs /app/.next/static ./.next/static
 # Replace bundled better-sqlite3 with the correctly compiled version from deps stage
 COPY --from=deps /app/node_modules/better-sqlite3 /app/node_modules/better-sqlite3
 
-# Copy playwright and install its Chromium browser
+# Copy playwright and install its Chromium browser to fixed path (readable by all users)
 COPY --from=deps /app/node_modules/playwright ./node_modules/playwright
 COPY --from=deps /app/node_modules/playwright-core ./node_modules/playwright-core
-RUN node node_modules/playwright/cli.js install chromium
+RUN node node_modules/playwright/cli.js install chromium && chmod -R 755 /ms-playwright
 
 USER nextjs
 
