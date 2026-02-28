@@ -1,26 +1,30 @@
-import { rateLimit, getClientIp } from '@/lib/rate-limit';
-import { NextRequest, NextResponse } from 'next/server';
-import { cookies } from 'next/headers';
+import { rateLimit, getClientIp } from "@/lib/rate-limit";
+import { NextRequest, NextResponse } from "next/server";
 
-const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD!;
-if (!ADMIN_PASSWORD) throw new Error('ADMIN_PASSWORD env var is required');
-const SESSION_COOKIE = 'qs-admin-session';
+const SESSION_COOKIE = "qs-admin-session";
+
+function getPassword(): string {
+  const pw = process.env.ADMIN_PASSWORD;
+  if (!pw) throw new Error("ADMIN_PASSWORD env var is required");
+  return pw;
+}
 
 export async function POST(req: NextRequest) {
   const ip = getClientIp(req);
   if (!rateLimit("auth:" + ip, 5, 60000)) {
     return NextResponse.json({ error: "too many attempts" }, { status: 429 });
   }
-  const { password } = await req.json().catch(() => ({}));
-  if (password !== ADMIN_PASSWORD) {
-    return NextResponse.json({ error: 'Invalid password' }, { status: 401 });
+  const password = getPassword();
+  const { password: submitted } = await req.json().catch(() => ({} as any));
+  if (submitted !== password) {
+    return NextResponse.json({ error: "Invalid password" }, { status: 401 });
   }
   const res = NextResponse.json({ success: true });
-  res.cookies.set(SESSION_COOKIE, Buffer.from(ADMIN_PASSWORD).toString('base64'), {
+  res.cookies.set(SESSION_COOKIE, Buffer.from(password).toString("base64"), {
     httpOnly: true,
-    sameSite: 'strict',
-    maxAge: 60 * 60 * 24 * 7, // 7 days
-    path: '/',
+    sameSite: "strict",
+    maxAge: 60 * 60 * 24 * 7,
+    path: "/",
   });
   return res;
 }
@@ -32,6 +36,6 @@ export async function DELETE() {
 }
 
 export function isAuthenticated(req: NextRequest): boolean {
-  const session = req.cookies.get('qs-admin-session')?.value;
-  return session === Buffer.from(ADMIN_PASSWORD).toString('base64');
+  const session = req.cookies.get("qs-admin-session")?.value;
+  return session === Buffer.from(getPassword()).toString("base64");
 }
