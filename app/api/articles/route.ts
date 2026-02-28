@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getArticles, countArticles, markArticleTweeted, updateArticleImage } from '@/lib/articles';
 
-const API_KEY = process.env.WEBSITE_API_KEY || '';
+const API_KEY = process.env.WEBSITE_API_KEY || 'qatar-standard-2024';
 
 export const dynamic = 'force-dynamic';
 
