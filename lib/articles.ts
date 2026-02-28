@@ -36,9 +36,28 @@ export function getArticles(opts: {
   limit?: number;
   offset?: number;
   category?: string;
+  untweetedOnly?: boolean;
 } = {}): Article[] {
   const db = getDb();
-  const { limit = 20, offset = 0, category } = opts;
+  const { limit = 20, offset = 0, category, untweetedOnly } = opts;
+
+  if (untweetedOnly) {
+    // Only articles from last 2 hours that haven't been tweeted yet
+    const base = `SELECT * FROM articles
+      WHERE tweeted_at IS NULL
+        AND published_at > datetime('now', '-2 hours')
+      ORDER BY published_at ASC LIMIT ? OFFSET ?`;
+    if (category && category !== 'all') {
+      return db.prepare(
+        `SELECT * FROM articles
+          WHERE tweeted_at IS NULL
+            AND published_at > datetime('now', '-2 hours')
+            AND category = ?
+          ORDER BY published_at ASC LIMIT ? OFFSET ?`
+      ).all(category, limit, offset) as Article[];
+    }
+    return db.prepare(base).all(limit, offset) as Article[];
+  }
 
   if (category && category !== 'all') {
     return db.prepare(
@@ -123,6 +142,11 @@ export function getLeastUsedCuratedImage(category: string, source: string): stri
 export function markArticleTweeted(slug: string): void {
   const db = getDb();
   db.prepare(`UPDATE articles SET tweeted_at = datetime('now') WHERE slug = ?`).run(slug);
+}
+
+export function updateArticleImage(slug: string, imageUrl: string): void {
+  const db = getDb();
+  db.prepare(`UPDATE articles SET image_url = ? WHERE slug = ?`).run(imageUrl, slug);
 }
 
 export function countArticles(category?: string): number {

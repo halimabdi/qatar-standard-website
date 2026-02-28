@@ -632,10 +632,34 @@ export async function POST(req: NextRequest) {
   }
 
   // ── Image ────────────────────────────────────────────────────────────────
+  // Build a focused image search query from title.
+  // Strip journalist lead-ins ("BREAKING:", "Report:", "Sources say:") that
+  // confuse image searches, then extract 4-6 key noun words (entities, places).
+  function buildImageQuery(title: string): string {
+    // Remove lead-in phrases up to the first comma/colon
+    let q = title
+      .replace(/^(BREAKING|EXCLUSIVE|REPORT|SOURCES?|OFFICIALS?|DEVELOPING)[:\s]+/i, '')
+      .replace(/^(breaking news|according to|contradicting media reports?|media reports?,)\s*/i, '')
+      .replace(/^(a |an |the )\s*/i, '')
+      .trim();
+
+    // If the title starts with a verb clause before the real subject, try to find
+    // a proper noun / capitalized sequence that's the actual subject
+    const properNouns = q.match(/\b([A-Z][a-z]+(?:\s+[A-Z][a-z]+)*)\b/g) || [];
+    if (properNouns.length >= 2) {
+      // Use the proper nouns as the image search query (max 6 words)
+      return properNouns.slice(0, 4).join(' ');
+    }
+
+    // Fallback: first 6 words of cleaned title
+    return q.split(/\s+/).slice(0, 6).join(' ');
+  }
+
+  const imageQuery = buildImageQuery(title_en);
   const image_url = await resolveImage(
     body.image_url || null,
     source_url,
-    title_en.slice(0, 100),  // use full title for relevant image search
+    imageQuery,
     category,
     source,
   );
