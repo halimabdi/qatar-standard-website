@@ -13,15 +13,68 @@ Deployed via Docker + Traefik on Hetzner `5.161.52.117`. GitHub → SSH pull →
 
 ## Deployment Workflow
 
-**Standard deploy** (commit + push + rebuild):
+### Coolify Deployment (preferred)
+
+Coolify manages the Docker build, container, Traefik labels, and env vars.
+
 ```bash
-# 1. Local: commit and push
+# 1. Commit and push
+cd /root/qatar-standard-website
 git add <files>
 git commit -m "..."
 git push origin master
 
-# 2. Server: pull + rebuild
-ssh -i C:/Users/habdi/hetzner/hetzner_new_nopass root@5.161.52.117
+# 2. Trigger deploy via Coolify API
+curl -s -X POST "http://localhost:8010/api/v1/deploy?uuid=ikc04og8kog4s4g404co80og" \
+  -H "Authorization: Bearer 23|3rT8aRdGx6E0cBtyYstcVIPvFJWo3q0SlOTfCiOH5ea1dc8b"
+
+# 3. Check deployment status (replace UUID with deployment_uuid from step 2)
+curl -s "http://localhost:8010/api/v1/deployments/<deployment_uuid>" \
+  -H "Authorization: Bearer 23|3rT8aRdGx6E0cBtyYstcVIPvFJWo3q0SlOTfCiOH5ea1dc8b" \
+  | python3 -c "import sys,json; d=json.load(sys.stdin); print(d['status'])"
+
+# 4. Fix Traefik race condition (502 after deploy)
+docker restart $(docker ps --format '{{.Names}}' | grep ikc04og)
+
+# 5. Verify
+curl -s -o /dev/null -w '%{http_code}' https://qatar-standard.com/
+```
+
+### Coolify Details
+- **App UUID**: `ikc04og8kog4s4g404co80og`
+- **API base**: `http://localhost:8010/api/v1`
+- **API token**: `23|3rT8aRdGx6E0cBtyYstcVIPvFJWo3q0SlOTfCiOH5ea1dc8b`
+- **Build pack**: Dockerfile
+- **Git repo**: `halimabdi/qatar-standard-website`, branch `master`
+- **Env vars**: Managed in Coolify (OPENAI_API_KEY, WEBSITE_API_KEY, DB_PATH, ADMIN_PASSWORD, GHOST_URL, GHOST_CONTENT_KEY, GROQ_API_KEY, SERP_API_KEY, PEXELS_API_KEY)
+
+### Coolify API — Managing Env Vars
+```bash
+# List env vars
+curl -s "http://localhost:8010/api/v1/applications/ikc04og8kog4s4g404co80og/envs" \
+  -H "Authorization: Bearer 23|3rT8aRdGx6E0cBtyYstcVIPvFJWo3q0SlOTfCiOH5ea1dc8b"
+
+# Add env var
+curl -s -X POST "http://localhost:8010/api/v1/applications/ikc04og8kog4s4g404co80og/envs" \
+  -H "Authorization: Bearer 23|3rT8aRdGx6E0cBtyYstcVIPvFJWo3q0SlOTfCiOH5ea1dc8b" \
+  -H "Content-Type: application/json" \
+  -d '{"key":"VAR_NAME","value":"VAR_VALUE","is_buildtime":true,"is_preview":false}'
+```
+
+### Coolify Build Gotchas
+- **NODE_ENV**: Coolify injects ALL env vars as ARG into every Docker build stage, including `NODE_ENV=production`. The Dockerfile overrides this with `RUN NODE_ENV=development npm ci` in the deps stage.
+- **Module-level throws**: Never throw errors at module level based on env vars (e.g., `if (!process.env.X) throw ...`). Next.js evaluates API route modules during `next build` page data collection, and build-time env vars may be missing. Defer checks to request-handling functions.
+- **502 after deploy (Traefik race)**: Every Coolify deploy creates a new container with a new name. Run `docker restart $(docker ps --format '{{.Names}}' | grep ikc04og)` after deployment finishes.
+
+### Build Logs (debugging failed deploys)
+```bash
+# Get build logs from Coolify Postgres
+docker exec coolify-db psql -U coolify -t -c \
+  "SELECT right(logs, 3000) FROM application_deployment_queues WHERE deployment_uuid='<uuid>'"
+```
+
+### Manual Deploy (fallback only)
+```bash
 cd /root/qatar-standard-website && git pull origin master
 docker build -t qatar-standard-website .
 docker stop qatar-standard-website && docker rm qatar-standard-website
@@ -36,9 +89,6 @@ docker run -d --name qatar-standard-website \
   -l 'traefik.http.routers.qatar-standard.tls.certresolver=letsencrypt' \
   -l 'traefik.http.services.qatar-standard.loadbalancer.server.port=3000' \
   qatar-standard-website
-
-# 3. Verify
-curl -s -o /dev/null -w '%{http_code}' https://qatar-standard.com/
 ```
 
 **CRITICAL:** Always include `-v /data/qatar-standard:/data`. Without it, a fresh empty DB is used and all articles are inaccessible.
@@ -224,7 +274,7 @@ ADMIN_PASSWORD      # Admin panel auth (see security note)
 
 **Security notes:**
 - `WEBSITE_API_KEY` has a hardcoded fallback in source (`qatar-standard-2024`) — always set this in `.env.local`
-- `ADMIN_PASSWORD` has a hardcoded fallback in source — always set this in `.env.local`
+- `ADMIN_PASSWORD` is required — app throws at request time if not set
 - Ghost admin credentials are in `.env.local` on the server only, not in this file
 
 ---
@@ -294,10 +344,17 @@ nordvpn allowlist add port 443
 | Issue | Severity | Notes |
 |---|---|---|
 | Hardcoded API key fallback in source | HIGH | Set `WEBSITE_API_KEY` in `.env.local` to override |
-| Hardcoded admin password fallback | HIGH | Set `ADMIN_PASSWORD` in `.env.local` |
 | Admin UI not yet implemented | MEDIUM | `/api/admin/auth` exists but no dashboard UI |
-| No rate limiting on `/api/generate` | MEDIUM | Bot is the only caller; low risk |
 | og:image scraper uses fragile regex | LOW | Can fail on unusual HTML |
 | SerpAPI free tier: 100/month | LOW | Exhausts after ~5 active days |
-| No full-text article search | LOW | Category/slug lookup only |
-| No database backup automation | LOW | Manual backup needed |
+
+### Recently Fixed (Feb 2026)
+- **Admin password** — hardcoded fallback removed; `ADMIN_PASSWORD` env var required at runtime
+- **XSS** — DOMPurify sanitization on all `dangerouslySetInnerHTML` usage
+- **Rate limiting** — added to `/api/generate` (10/min), `/api/articles` (60/min), `/api/admin/auth` (5/min)
+- **Article search** — LIKE-based search via `/api/search` + SearchBar in header
+- **Image optimization** — all `<img>` replaced with Next.js `<Image>` components
+- **Accessibility** — ARIA labels, skip-to-content link, RTL logical properties
+- **SEO** — JSON-LD keywords/wordCount, canonical URLs for paginated pages
+- **Features** — breaking news banner, social sharing, most-read sidebar, print stylesheet, privacy policy
+- **Database backup** — daily cron at 3 AM to `/root/backups/qatar-standard/`
