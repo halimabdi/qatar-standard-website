@@ -430,7 +430,8 @@ async function writerAgents(opts: {
 - 400 إلى 600 كلمة
 - مقدمة قوية تلخص الخبر في جملة واحدة
 - فقرة للسياق والأهمية
-- تفاصيل وأرقام ومعلومات محددة من المصدر
+- تفاصيل وأرقام ومعلومات محددة من المصدر فقط — لا تخترع أرقاماً أو إحصائيات أو تواريخ أو أسماء غير مذكورة في المصدر
+- تنبيه: إذا كان المصدر قصيراً أو لا يحتوي على أرقام، اكتب عن السياق العام دون اختراع أي معلومات
 - خلاصة بمنظور قطري
 - لا تستخدم: يُجسّد، يُرسّخ، يُسلّط الضوء، مما يعكس، في ظل، تجدر الإشارة
 - لا تذكر أنك ذكاء اصطناعي
@@ -450,7 +451,8 @@ Rules:
 - 400 to 600 words
 - Strong lede summarizing the news in one sentence
 - Paragraph on context and significance
-- Specific details, numbers, and facts from the source
+- Only include details, numbers, and facts explicitly present in the source material — NEVER invent statistics, names, dates, or figures not mentioned in the source
+- If the source is brief and contains no specific data, expand on verified general context without fabricating specifics
 - Conclusion with Qatar/Gulf perspective
 - No AI filler phrases: "it is worth noting", "in light of", "this reflects", "underscores"
 - Write paragraphs only — NO headers, NO bold (**), NO markdown, NO bullet points
