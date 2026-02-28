@@ -76,7 +76,7 @@ export default function ArticleCard({ article, size = 'md' }: Props) {
               fill
               sizes="(max-width: 768px) 100vw, 66vw"
               onError={() => setImgFailed(true)}
-              className="object-cover group-hover:scale-105 transition-transform duration-500"
+              className="object-cover object-top group-hover:scale-105 transition-transform duration-500"
               priority
               unoptimized
             />

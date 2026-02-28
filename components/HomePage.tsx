@@ -53,7 +53,7 @@ export default function HomePage({ hero, recent, latest5, sidebar, featuredAnaly
                 alt={featuredAnalysis.title}
                 fill
                 sizes="100vw"
-                className="object-cover group-hover:scale-105 transition-transform duration-500"
+                className="object-cover object-top group-hover:scale-105 transition-transform duration-500"
                 onError={(e) => { (e.currentTarget as HTMLImageElement).style.display = 'none'; }}
                 unoptimized
               />

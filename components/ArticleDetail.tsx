@@ -208,7 +208,7 @@ export default function ArticleDetail({ article, related, mostRead = [] }: Props
               />
             </div>
           ) : heroImg ? (
-            <div className="rounded-xl overflow-hidden mb-6 aspect-[16/9] bg-gray-100">
+            <div className="relative rounded-xl overflow-hidden mb-6 aspect-[16/9] bg-gray-100">
               <Image src={heroImg} alt={title} fill sizes="(max-width: 1024px) 100vw, 75vw" onError={(e) => { e.currentTarget.style.display = 'none'; (e.currentTarget.parentElement as HTMLElement).classList.add('hidden'); }} className="object-cover" unoptimized />
             </div>
           ) : null}
