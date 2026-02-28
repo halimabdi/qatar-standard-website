@@ -6,7 +6,7 @@ import Link from 'next/link';
 import Image from 'next/image';
 import { useLang } from '@/contexts/LanguageContext';
 import { marked } from 'marked';
-import DOMPurify from 'isomorphic-dompurify';
+import DOMPurify from 'dompurify';
 
 function renderMarkdown(text: string): string {
   try {

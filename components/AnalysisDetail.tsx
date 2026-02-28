@@ -2,7 +2,7 @@
 import type { GhostPost } from '@/lib/ghost';
 import Link from 'next/link';
 import Image from 'next/image';
-import DOMPurify from 'isomorphic-dompurify';
+import DOMPurify from 'dompurify';
 import { useLang } from '@/contexts/LanguageContext';
 
 function formatDate(dateStr: string, lang: 'en' | 'ar'): string {
@@ -113,7 +113,7 @@ export default function AnalysisDetail({ post, related }: Props) {
         {/* Ghost HTML content */}
         <div
           className="ghost-content"
-          dangerouslySetInnerHTML={{ __html: DOMPurify.sanitize(post.html) }}
+          dangerouslySetInnerHTML={{ __html: (typeof window !== 'undefined' ? DOMPurify.sanitize(post.html) : post.html) }}
         />
 
         {/* Share */}
