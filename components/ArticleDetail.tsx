@@ -9,7 +9,7 @@ import { marked } from 'marked';
 
 function renderMarkdown(text: string): string {
   try {
-    return DOMPurify.sanitize(marked.parse(text, { async: false }) as string);
+    return marked.parse(text, { async: false }) as string;
   } catch {
     return text;
   }
