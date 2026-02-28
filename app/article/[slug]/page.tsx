@@ -1,4 +1,4 @@
-import { getArticleBySlug, getArticles, CATEGORIES } from '@/lib/articles';
+import { getArticleBySlug, getArticles, CATEGORIES, incrementViewCount, getMostRead } from '@/lib/articles';
 import ArticleDetail from '@/components/ArticleDetail';
 import { notFound } from 'next/navigation';
 import type { Metadata } from 'next';
@@ -51,9 +51,12 @@ export default async function ArticlePage({ params }: { params: Promise<{ slug: 
   const article = getArticleBySlug(slug);
   if (!article) notFound();
 
+  incrementViewCount(slug);
+
+  const mostRead = getMostRead(5);
   const related = getArticles({ limit: 4, category: article.category })
     .filter(a => a.slug !== article.slug)
     .slice(0, 3);
 
-  return <ArticleDetail article={article} related={related} />;
+  return <ArticleDetail article={article} related={related} mostRead={mostRead} />;
 }

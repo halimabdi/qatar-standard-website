@@ -1,4 +1,25 @@
 import { getArticles, countArticles, CATEGORIES } from '@/lib/articles';
+import type { Metadata } from 'next';
+
+const SITE_URL = 'https://qatar-standard.com';
+
+export async function generateMetadata({
+  params,
+  searchParams,
+}: {
+  params: Promise<{ cat: string }>;
+  searchParams: Promise<{ page?: string }>;
+}): Promise<Metadata> {
+  const { cat } = await params;
+  const sp = await searchParams;
+  const page = sp.page || '1';
+  const canonical = page === '1'
+    ? `${SITE_URL}/category/${cat}`
+    : `${SITE_URL}/category/${cat}?page=${page}`;
+  return {
+    alternates: { canonical },
+  };
+}
 import CategoryPage from '@/components/CategoryPage';
 import { notFound } from 'next/navigation';
 

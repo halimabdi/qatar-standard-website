@@ -1,3 +1,4 @@
+import { rateLimit, getClientIp } from '@/lib/rate-limit';
 import { NextRequest, NextResponse } from 'next/server';
 import { getArticles, countArticles, markArticleTweeted, updateArticleImage } from '@/lib/articles';
 
@@ -6,13 +7,25 @@ const API_KEY = process.env.WEBSITE_API_KEY || 'qatar-standard-2024';
 export const dynamic = 'force-dynamic';
 
 export async function GET(req: NextRequest) {
+  const ip = getClientIp(req);
+  if (!rateLimit("articles:" + ip, 60, 60000)) {
+    return NextResponse.json({ error: "rate limit exceeded" }, { status: 429 });
+  }
   const { searchParams } = new URL(req.url);
   const limit         = Math.min(parseInt(searchParams.get('limit')  || '20'), 100);
   const offset        = parseInt(searchParams.get('offset') || '0');
   const category      = searchParams.get('category') || undefined;
   const untweetedOnly = searchParams.get('untweeted') === 'true';
+  const breaking      = searchParams.get('breaking') === 'true';
 
-  const articles = getArticles({ limit, offset, category, untweetedOnly });
+  let articles;
+  if (breaking) {
+    const { getBreakingArticle } = await import('@/lib/articles');
+    const a = getBreakingArticle();
+    articles = a ? [a] : [];
+  } else {
+    articles = getArticles({ limit, offset, category, untweetedOnly });
+  }
   const total    = untweetedOnly ? articles.length : countArticles(category);
 
   return NextResponse.json({ articles, total, limit, offset });

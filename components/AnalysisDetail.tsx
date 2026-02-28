@@ -1,6 +1,8 @@
 'use client';
 import type { GhostPost } from '@/lib/ghost';
 import Link from 'next/link';
+import Image from 'next/image';
+import DOMPurify from 'isomorphic-dompurify';
 import { useLang } from '@/contexts/LanguageContext';
 
 function formatDate(dateStr: string, lang: 'en' | 'ar'): string {
@@ -53,11 +55,15 @@ export default function AnalysisDetail({ post, related }: Props) {
       {/* Hero image */}
       {post.feature_image && (
         <div className="w-full h-72 md:h-96 overflow-hidden bg-gray-200">
-          <img
+          <Image
             src={post.feature_image}
             alt={post.title}
-            className="w-full h-full object-cover"
-            onError={(e) => { e.currentTarget.style.display = 'none'; }}
+            fill
+            sizes="100vw"
+            className="object-cover"
+            onError={(e) => { (e.currentTarget as HTMLImageElement).style.display = 'none'; }}
+            priority
+            unoptimized
           />
         </div>
       )}
@@ -107,7 +113,7 @@ export default function AnalysisDetail({ post, related }: Props) {
         {/* Ghost HTML content */}
         <div
           className="ghost-content"
-          dangerouslySetInnerHTML={{ __html: post.html }}
+          dangerouslySetInnerHTML={{ __html: DOMPurify.sanitize(post.html) }}
         />
 
         {/* Share */}
@@ -141,12 +147,17 @@ export default function AnalysisDetail({ post, related }: Props) {
               {related.map(p => (
                 <article key={p.id} className="group">
                   {p.feature_image && (
-                    <img
-                      src={p.feature_image}
-                      alt={p.title}
-                      className="w-full h-40 object-cover rounded-lg mb-3"
-                      onError={(e) => { e.currentTarget.style.display = 'none'; }}
-                    />
+                    <div className="relative w-full h-40 mb-3">
+                      <Image
+                        src={p.feature_image}
+                        alt={p.title}
+                        fill
+                        sizes="(max-width: 768px) 100vw, 33vw"
+                        className="object-cover rounded-lg"
+                        onError={(e) => { (e.currentTarget as HTMLImageElement).style.display = 'none'; }}
+                        unoptimized
+                      />
+                    </div>
                   )}
                   <h3 className="font-bold text-gray-900 leading-snug group-hover:text-maroon-800 transition-colors">
                     <Link href={`/analysis/${p.slug}`}>{p.title}</Link>

@@ -4,6 +4,7 @@ import type { GhostPost } from '@/lib/ghost';
 import { CATEGORIES_AR, CATEGORIES_EN, CATEGORY_KEYS } from '@/lib/categories';
 import ArticleCard from './ArticleCard';
 import Link from 'next/link';
+import Image from 'next/image';
 import { useLang } from '@/contexts/LanguageContext';
 
 interface Props {
@@ -22,7 +23,7 @@ export default function HomePage({ hero, recent, latest5, sidebar, featuredAnaly
     return (
       <div className="max-w-7xl mx-auto px-4 py-20 text-center">
         <div className="flex justify-center mb-6">
-          <img src="/qatar-standard-logo.png" alt="Qatar Standard" className="h-24 w-auto" />
+          <Image src="/qatar-standard-logo.png" alt="Qatar Standard" width={200} height={96} className="h-24 w-auto" />
         </div>
         <p className="text-gray-500 text-lg">
           {isAr ? 'لم يتم نشر أي مقالات بعد. تابع معنا قريباً.' : 'No articles published yet. Check back soon.'}
@@ -47,11 +48,14 @@ export default function HomePage({ hero, recent, latest5, sidebar, featuredAnaly
           >
             {/* Background image */}
             {featuredAnalysis.feature_image ? (
-              <img
+              <Image
                 src={featuredAnalysis.feature_image}
                 alt={featuredAnalysis.title}
-                className="absolute inset-0 w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
+                fill
+                sizes="100vw"
+                className="object-cover group-hover:scale-105 transition-transform duration-500"
                 onError={(e) => { (e.currentTarget as HTMLImageElement).style.display = 'none'; }}
+                unoptimized
               />
             ) : (
               <div className="absolute inset-0 bg-maroon-900" />

@@ -3,6 +3,7 @@ import Link from 'next/link';
 import Image from 'next/image';
 import { useState } from 'react';
 import { useLang } from '@/contexts/LanguageContext';
+import SearchBar from './SearchBar';
 
 const NAV = [
   { href: '/',                   en: 'Home',       ar: 'الرئيسية' },
@@ -52,10 +53,12 @@ export default function Header() {
           </Link>
 
           <div className="flex items-center gap-3">
+            <SearchBar />
             {/* Language toggle */}
             <button
               onClick={() => setLang(isAr ? 'en' : 'ar')}
               className="flex items-center gap-1.5 px-3 py-1.5 border border-maroon-800 text-maroon-800 rounded text-xs font-bold hover:bg-maroon-800 hover:text-white transition-colors"
+              aria-label={isAr ? 'Switch to English' : 'التبديل إلى العربية'}
               title={isAr ? 'Switch to English' : 'التبديل إلى العربية'}
             >
               {isAr ? 'EN' : 'عربي'}
@@ -65,8 +68,10 @@ export default function Header() {
             <button
               className="md:hidden p-2 rounded text-gray-600"
               onClick={() => setMobileOpen(!mobileOpen)}
+              aria-label="Toggle menu"
+              aria-expanded={mobileOpen}
             >
-              <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
                 {mobileOpen
                   ? <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
                   : <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" />

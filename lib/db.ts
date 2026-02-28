@@ -46,12 +46,30 @@ function getDb(): Database.Database {
     CREATE INDEX IF NOT EXISTS idx_articles_slug         ON articles(slug);
   `);
 
+
+  // Full-text search virtual table
+  try {
+    db.exec(`
+      CREATE VIRTUAL TABLE IF NOT EXISTS articles_fts USING fts5(
+        title_en, title_ar, body_en, body_ar,
+        content=articles, content_rowid=id
+      );
+    `);
+    // Rebuild FTS index if empty
+    const ftsCount = (db.prepare('SELECT COUNT(*) as n FROM articles_fts').get() as { n: number }).n;
+    const artCount = (db.prepare('SELECT COUNT(*) as n FROM articles').get() as { n: number }).n;
+    if (ftsCount === 0 && artCount > 0) {
+      db.exec("INSERT INTO articles_fts(articles_fts) VALUES('rebuild')");
+    }
+  } catch {}
+
   // Migrate existing tables — add new columns if missing
   const cols = (db.prepare(`PRAGMA table_info(articles)`).all() as Array<{ name: string }>).map(c => c.name);
   if (!cols.includes('source_url'))   db.exec(`ALTER TABLE articles ADD COLUMN source_url TEXT`);
   if (!cols.includes('content_hash')) db.exec(`ALTER TABLE articles ADD COLUMN content_hash TEXT`);
   if (!cols.includes('tweeted_at'))   db.exec(`ALTER TABLE articles ADD COLUMN tweeted_at DATETIME NULL`);
   if (!cols.includes('video_url'))    db.exec(`ALTER TABLE articles ADD COLUMN video_url TEXT NULL`);
+  if (!cols.includes('view_count'))   db.exec(`ALTER TABLE articles ADD COLUMN view_count INTEGER DEFAULT 0`);
 
   // Unique index for deduplication — ignore if already exists
   try { db.exec(`CREATE UNIQUE INDEX idx_articles_content_hash ON articles(content_hash) WHERE content_hash IS NOT NULL`); } catch {}

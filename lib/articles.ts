@@ -168,3 +168,39 @@ export const CATEGORIES: Record<string, string> = {
   africa:     'أفريقيا',
   turkey:     'تركيا',
 };
+
+
+export function searchArticles(query: string, limit = 20): Article[] {
+  const db = getDb();
+  const like = '%' + query + '%';
+  return db.prepare(`
+    SELECT * FROM articles
+    WHERE title_en LIKE ? OR title_ar LIKE ? OR body_en LIKE ? OR body_ar LIKE ?
+    ORDER BY published_at DESC LIMIT ?
+  `).all(like, like, like, like, limit) as Article[];
+}
+
+export function incrementViewCount(slug: string): void {
+  const db = getDb();
+  db.prepare('UPDATE articles SET view_count = COALESCE(view_count, 0) + 1 WHERE slug = ?').run(slug);
+}
+
+export function getMostRead(limit = 5): Article[] {
+  const db = getDb();
+  return db.prepare(`
+    SELECT * FROM articles
+    WHERE published_at > datetime('now', '-7 days')
+    ORDER BY view_count DESC
+    LIMIT ?
+  `).all(limit) as Article[];
+}
+
+export function getBreakingArticle(): Article | null {
+  const db = getDb();
+  return db.prepare(`
+    SELECT * FROM articles
+    WHERE (UPPER(title_en) LIKE '%BREAKING%' OR UPPER(title_ar) LIKE '%عاجل%')
+      AND published_at > datetime('now', '-2 hours')
+    ORDER BY published_at DESC LIMIT 1
+  `).get() as Article | null;
+}

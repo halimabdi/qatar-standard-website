@@ -146,3 +146,26 @@ body {
   border-radius: 0.25rem;
   font-size: 0.875em;
 }
+
+
+/* Print stylesheet */
+@media print {
+  header, footer, nav, aside, .no-print,
+  [class*="sticky"], [class*="fixed"] {
+    display: none !important;
+  }
+  main {
+    padding: 0 !important;
+    margin: 0 !important;
+  }
+  body {
+    background: white !important;
+    color: black !important;
+    font-size: 12pt;
+  }
+  a { color: black !important; text-decoration: none !important; }
+  a[href]:after { content: " (" attr(href) ")"; font-size: 0.8em; color: #666; }
+  img { max-width: 100% !important; page-break-inside: avoid; }
+  h1, h2, h3 { page-break-after: avoid; }
+  .prose-ar, .prose-en, .ghost-content { max-width: 100% !important; }
+}

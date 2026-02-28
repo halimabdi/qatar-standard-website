@@ -1,6 +1,7 @@
 'use client';
 import type { GhostPost } from '@/lib/ghost';
 import Link from 'next/link';
+import Image from 'next/image';
 import { useLang } from '@/contexts/LanguageContext';
 
 function formatDate(dateStr: string, lang: 'en' | 'ar'): string {
@@ -49,12 +50,16 @@ export default function AnalysisPage({ posts }: Props) {
             {posts[0] && (
               <article className="bg-white rounded-xl overflow-hidden shadow-sm border border-gray-100 md:flex">
                 {posts[0].feature_image && (
-                  <div className="md:w-2/5 flex-shrink-0">
-                    <img
+                  <div className="md:w-2/5 flex-shrink-0 relative min-h-[14rem] md:min-h-0">
+                    <Image
                       src={posts[0].feature_image}
                       alt={posts[0].title}
-                      className="w-full h-56 md:h-full object-cover"
-                      onError={(e) => { e.currentTarget.style.display = 'none'; }}
+                      fill
+                      sizes="(max-width: 768px) 100vw, 40vw"
+                      className="object-cover"
+                      onError={(e) => { (e.currentTarget as HTMLImageElement).style.display = 'none'; }}
+                      priority
+                      unoptimized
                     />
                   </div>
                 )}
@@ -103,12 +108,17 @@ export default function AnalysisPage({ posts }: Props) {
                 {posts.slice(1).map(post => (
                   <article key={post.id} className="bg-white rounded-xl overflow-hidden shadow-sm border border-gray-100">
                     {post.feature_image && (
-                      <img
-                        src={post.feature_image}
-                        alt={post.title}
-                        className="w-full h-44 object-cover"
-                        onError={(e) => { e.currentTarget.style.display = 'none'; }}
-                      />
+                      <div className="relative w-full h-44">
+                        <Image
+                          src={post.feature_image}
+                          alt={post.title}
+                          fill
+                          sizes="(max-width: 768px) 100vw, 50vw"
+                          className="object-cover"
+                          onError={(e) => { (e.currentTarget as HTMLImageElement).style.display = 'none'; }}
+                          unoptimized
+                        />
+                      </div>
                     )}
                     <div className="p-5">
                       {post.primary_tag && (

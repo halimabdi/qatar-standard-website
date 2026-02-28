@@ -84,9 +84,10 @@ export default function Footer() {
           </div>
         </div>
 
-        <div className="border-t border-white/10 mt-8 pt-4 text-xs text-white/40 text-center">
-          © {year} Qatar Standard
-          {isAr ? ' — جميع الحقوق محفوظة' : ' — All rights reserved'}
+        <div className="border-t border-white/10 mt-8 pt-4 text-xs text-white/40 text-center flex items-center justify-center gap-4">
+          <span>© {year} Qatar Standard</span>
+          <Link href="/privacy" className="hover:text-white/60 transition-colors">Privacy Policy</Link>
+          <span>{isAr ? 'جميع الحقوق محفوظة' : 'All rights reserved'}</span>
         </div>
       </div>
     </footer>

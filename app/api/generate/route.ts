@@ -1,3 +1,4 @@
+import { rateLimit, getClientIp } from '@/lib/rate-limit';
 import { NextRequest, NextResponse } from 'next/server';
 import { createArticle, getArticleBySourceUrl, getArticleByContentHash, makeContentHash } from '@/lib/articles';
 import slugify from 'slugify';
@@ -501,6 +502,11 @@ async function editorAgent(body_ar: string, body_en: string): Promise<{ body_ar:
 // ── Main POST handler ─────────────────────────────────────────────────────────
 
 export async function POST(req: NextRequest) {
+  const ip = getClientIp(req);
+  if (!rateLimit("generate:" + ip, 10, 60000)) {
+    return NextResponse.json({ error: "rate limit exceeded" }, { status: 429 });
+  }
+
   const auth = req.headers.get('x-api-key') || req.headers.get('authorization')?.replace('Bearer ', '');
   if (auth !== API_KEY) {
     return NextResponse.json({ error: 'unauthorized' }, { status: 401 });

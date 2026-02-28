@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import "./globals.css";
 import Header from "@/components/Header";
+import BreakingBanner from "@/components/BreakingBanner";
 import Footer from "@/components/Footer";
 import { LanguageProvider } from "@/contexts/LanguageContext";
 import Image from "next/image";
@@ -46,6 +47,9 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         />
       </head>
       <body className="antialiased bg-gray-50 font-sans">
+        <a href="#main-content" className="sr-only focus:not-sr-only focus:absolute focus:z-[100] focus:top-2 focus:left-2 focus:bg-maroon-800 focus:text-white focus:px-4 focus:py-2 focus:rounded">
+          Skip to content
+        </a>
         {/* Twitter banner masthead — scrolls away, not sticky */}
         <div className="w-full overflow-hidden bg-maroon-900" style={{ height: '120px' }}>
           <Image
@@ -60,8 +64,9 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
           />
         </div>
         <LanguageProvider>
+          <BreakingBanner />
           <Header />
-          <main className="min-h-screen">{children}</main>
+          <main id="main-content" className="min-h-screen">{children}</main>
           <Footer />
         </LanguageProvider>
       </body>

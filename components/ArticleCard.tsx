@@ -1,5 +1,6 @@
 'use client';
 import Link from 'next/link';
+import Image from 'next/image';
 import { useState } from 'react';
 import type { Article } from '@/lib/articles';
 import { CATEGORIES_AR, CATEGORIES_EN } from '@/lib/categories';
@@ -69,17 +70,20 @@ export default function ArticleCard({ article, size = 'md' }: Props) {
       <Link href={`/article/${article.slug}`} className="group block">
         <div className="relative overflow-hidden rounded-lg bg-gray-100 aspect-[16/9] mb-4">
           {hasImg ? (
-            <img
+            <Image
               src={article.image_url!}
               alt={title}
+              fill
+              sizes="(max-width: 768px) 100vw, 66vw"
               onError={() => setImgFailed(true)}
-              fetchPriority="high"
-              className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
+              className="object-cover group-hover:scale-105 transition-transform duration-500"
+              priority
+              unoptimized
             />
           ) : (
             <ImagePlaceholder category={article.category} catLabel={catLabel} />
           )}
-          <span className="absolute top-3 left-3 bg-maroon-800 text-white text-xs px-2 py-1 rounded font-medium">
+          <span className="absolute top-3 start-3 bg-maroon-800 text-white text-xs px-2 py-1 rounded font-medium">
             {catLabel}
           </span>
         </div>
@@ -109,7 +113,16 @@ export default function ArticleCard({ article, size = 'md' }: Props) {
       <Link href={`/article/${article.slug}`} className="group flex gap-3 py-3 border-b border-gray-100 last:border-0">
         <div className="relative overflow-hidden rounded w-20 h-16 shrink-0 bg-gray-100">
           {hasImg ? (
-            <img src={article.image_url!} alt={title} onError={() => setImgFailed(true)} loading="lazy" className="w-full h-full object-cover group-hover:scale-105 transition-transform" />
+            <Image
+              src={article.image_url!}
+              alt={title}
+              fill
+              sizes="80px"
+              onError={() => setImgFailed(true)}
+              className="object-cover group-hover:scale-105 transition-transform"
+              loading="lazy"
+              unoptimized
+            />
           ) : (
             <ImagePlaceholder category={article.category} catLabel={catLabel} />
           )}
@@ -129,17 +142,20 @@ export default function ArticleCard({ article, size = 'md' }: Props) {
     <Link href={`/article/${article.slug}`} className="group block">
       <div className="relative overflow-hidden rounded-lg bg-gray-100 aspect-[16/9] mb-3">
         {hasImg ? (
-          <img
+          <Image
             src={article.image_url!}
             alt={title}
+            fill
+            sizes="(max-width: 640px) 100vw, (max-width: 768px) 50vw, 33vw"
             onError={() => setImgFailed(true)}
+            className="object-cover group-hover:scale-105 transition-transform duration-500"
             loading="lazy"
-            className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
+            unoptimized
           />
         ) : (
           <ImagePlaceholder category={article.category} catLabel={catLabel} />
         )}
-        <span className="absolute top-2 left-2 bg-maroon-800 text-white text-xs px-2 py-0.5 rounded font-medium">
+        <span className="absolute top-2 start-2 bg-maroon-800 text-white text-xs px-2 py-0.5 rounded font-medium">
           {catLabel}
         </span>
       </div>

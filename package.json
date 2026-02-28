@@ -10,6 +10,7 @@
   "dependencies": {
     "@types/better-sqlite3": "^7.6.13",
     "better-sqlite3": "^12.6.2",
+    "isomorphic-dompurify": "^3.0.0",
     "marked": "^17.0.3",
     "next": "16.1.6",
     "playwright": "^1.49.0",

@@ -1,10 +1,16 @@
+import { rateLimit, getClientIp } from '@/lib/rate-limit';
 import { NextRequest, NextResponse } from 'next/server';
 import { cookies } from 'next/headers';
 
-const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD || 'QatarStandard2024!';
+const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD!;
+if (!ADMIN_PASSWORD) throw new Error('ADMIN_PASSWORD env var is required');
 const SESSION_COOKIE = 'qs-admin-session';
 
 export async function POST(req: NextRequest) {
+  const ip = getClientIp(req);
+  if (!rateLimit("auth:" + ip, 5, 60000)) {
+    return NextResponse.json({ error: "too many attempts" }, { status: 429 });
+  }
   const { password } = await req.json().catch(() => ({}));
   if (password !== ADMIN_PASSWORD) {
     return NextResponse.json({ error: 'Invalid password' }, { status: 401 });

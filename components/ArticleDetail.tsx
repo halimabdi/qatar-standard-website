@@ -3,12 +3,14 @@ import type { Article } from '@/lib/articles';
 import { CATEGORIES_AR, CATEGORIES_EN } from '@/lib/categories';
 import ArticleCard from './ArticleCard';
 import Link from 'next/link';
+import Image from 'next/image';
 import { useLang } from '@/contexts/LanguageContext';
 import { marked } from 'marked';
+import DOMPurify from 'isomorphic-dompurify';
 
 function renderMarkdown(text: string): string {
   try {
-    return marked.parse(text, { async: false }) as string;
+    return DOMPurify.sanitize(marked.parse(text, { async: false }) as string);
   } catch {
     return text;
   }
@@ -61,9 +63,10 @@ function sourceLabel(source: string, source_url: string | null): { label: string
 interface Props {
   article: Article;
   related: Article[];
+  mostRead?: Article[];
 }
 
-export default function ArticleDetail({ article, related }: Props) {
+export default function ArticleDetail({ article, related, mostRead = [] }: Props) {
   const { lang, setLang } = useLang();
   const isAr = lang === 'ar';
 
@@ -101,6 +104,8 @@ export default function ArticleDetail({ article, related }: Props) {
     },
     mainEntityOfPage: { '@type': 'WebPage', '@id': `https://qatar-standard.com/article/${article.slug}` },
     inLanguage: isAr ? 'ar' : 'en',
+    keywords: [catLabel, ...(article.speaker_name ? [article.speaker_name] : [])],
+    wordCount: body.split(/\s+/).length,
   };
 
   return (
@@ -130,6 +135,7 @@ export default function ArticleDetail({ article, related }: Props) {
             <button
               onClick={() => setLang(isAr ? 'en' : 'ar')}
               className="text-xs px-3 py-1 border border-maroon-800 text-maroon-800 rounded hover:bg-maroon-800 hover:text-white transition-colors font-medium"
+              aria-label={isAr ? 'Read in English' : 'اقرأ بالعربية'}
             >
               {isAr ? 'Read in English' : 'اقرأ بالعربية'}
             </button>
@@ -163,6 +169,34 @@ export default function ArticleDetail({ article, related }: Props) {
             )}
           </div>
 
+
+          {/* Share buttons */}
+          <div className="flex items-center gap-4 mb-6">
+            <span className="text-xs text-gray-400 font-medium">{isAr ? 'شارك:' : 'Share:'}</span>
+            <a
+              href={'https://twitter.com/intent/tweet?url=' + encodeURIComponent('https://qatar-standard.com/article/' + article.slug) + '&text=' + encodeURIComponent(title)}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="text-xs font-semibold text-maroon-800 hover:underline"
+            >
+              X / Twitter
+            </a>
+            <a
+              href={'https://wa.me/?text=' + encodeURIComponent(title + ' https://qatar-standard.com/article/' + article.slug)}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="text-xs font-semibold text-maroon-800 hover:underline"
+            >
+              WhatsApp
+            </a>
+            <button
+              onClick={() => { navigator.clipboard.writeText('https://qatar-standard.com/article/' + article.slug); }}
+              className="text-xs font-semibold text-maroon-800 hover:underline"
+            >
+              {isAr ? 'نسخ الرابط' : 'Copy Link'}
+            </button>
+          </div>
+
           {/* Hero media: video player if video_url exists, otherwise image */}
           {article.video_url ? (
             <div className="rounded-xl overflow-hidden mb-6 aspect-[16/9] bg-black">
@@ -176,7 +210,7 @@ export default function ArticleDetail({ article, related }: Props) {
             </div>
           ) : heroImg ? (
             <div className="rounded-xl overflow-hidden mb-6 aspect-[16/9] bg-gray-100">
-              <img src={heroImg} alt={title} onError={(e) => { e.currentTarget.style.display = 'none'; e.currentTarget.parentElement!.classList.add('hidden'); }} className="w-full h-full object-cover" />
+              <Image src={heroImg} alt={title} fill sizes="(max-width: 1024px) 100vw, 75vw" onError={(e) => { e.currentTarget.style.display = 'none'; (e.currentTarget.parentElement as HTMLElement).classList.add('hidden'); }} className="object-cover" unoptimized />
             </div>
           ) : null}
 
@@ -237,6 +271,17 @@ export default function ArticleDetail({ article, related }: Props) {
                 {isAr ? 'مقالات ذات صلة' : 'Related Stories'}
               </h3>
               {related.map(a => (
+                <ArticleCard key={a.id} article={a} size="sm" />
+              ))}
+            </div>
+          )}
+
+          {mostRead.length > 0 && (
+            <div className="mt-6">
+              <h3 className="text-xs font-bold uppercase tracking-widest text-maroon-800 mb-3 border-b-2 border-maroon-800 pb-1">
+                {isAr ? 'الأكثر قراءة' : 'Most Read'}
+              </h3>
+              {mostRead.filter(a => a.slug !== article.slug).slice(0, 5).map(a => (
                 <ArticleCard key={a.id} article={a} size="sm" />
               ))}
             </div>
