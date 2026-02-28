@@ -13,7 +13,10 @@ export default async function Page() {
     getGhostPosts(1),
   ]);
 
-  const featuredAnalysis = ghostPosts[0] || null;
+  // Only show Ghost analysis in hero if published within the last 24 hours
+  const latestGhost = ghostPosts[0] || null;
+  const ghostAge = latestGhost ? Date.now() - new Date(latestGhost.published_at).getTime() : Infinity;
+  const featuredAnalysis = ghostAge < 24 * 60 * 60 * 1000 ? latestGhost : null;
 
   return <HomePage hero={hero} recent={recent} latest5={latest5} sidebar={sidebar} featuredAnalysis={featuredAnalysis} />;
 }
