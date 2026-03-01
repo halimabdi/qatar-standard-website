@@ -1,8 +1,10 @@
-import { NextRequest, NextResponse } from 'next/server';
+import { NextRequest } from 'next/server';
 import fs from 'fs';
 import path from 'path';
 
-export const dynamic = 'force-dynamic';
+// No force-dynamic — let Cloudflare cache these files so it can handle
+// range requests itself (Cloudflare strips Range headers for uncached content)
+export const runtime = 'nodejs';
 
 export async function GET(
   req: NextRequest,
@@ -11,10 +13,10 @@ export async function GET(
   const { filename } = await params;
   // Sanitize — only allow safe filenames
   const safe = filename.replace(/[^a-zA-Z0-9._-]/g, '');
-  if (!safe) return new NextResponse(null, { status: 400 });
+  if (!safe) return new Response(null, { status: 400 });
 
   const filePath = path.join('/data', 'uploads', safe);
-  if (!fs.existsSync(filePath)) return new NextResponse(null, { status: 404 });
+  if (!fs.existsSync(filePath)) return new Response(null, { status: 404 });
 
   const ext = path.extname(safe).toLowerCase();
   const contentType =
@@ -27,15 +29,13 @@ export async function GET(
     'image/jpeg';
 
   const isVideo = contentType.startsWith('video/');
+  const stat = fs.statSync(filePath);
+  const fileSize = stat.size;
 
-  // For videos, implement byte-range serving (required by iOS Safari and mobile browsers)
   if (isVideo) {
-    const stat = fs.statSync(filePath);
-    const fileSize = stat.size;
     const rangeHeader = req.headers.get('range');
 
     if (rangeHeader) {
-      // Parse Range header e.g. "bytes=0-1023"
       const match = rangeHeader.match(/bytes=(\d+)-(\d*)/);
       if (match) {
         const start = parseInt(match[1], 10);
@@ -47,7 +47,7 @@ export async function GET(
         fs.readSync(fd, buffer, 0, chunkSize, start);
         fs.closeSync(fd);
 
-        return new NextResponse(buffer, {
+        return new Response(buffer, {
           status: 206,
           headers: {
             'Content-Type': contentType,
@@ -60,9 +60,8 @@ export async function GET(
       }
     }
 
-    // No Range header — return full file with Accept-Ranges so browser knows to use ranges
     const buffer = fs.readFileSync(filePath);
-    return new NextResponse(buffer, {
+    return new Response(buffer, {
       status: 200,
       headers: {
         'Content-Type': contentType,
@@ -73,11 +72,12 @@ export async function GET(
     });
   }
 
-  // Images — return full file as before
+  // Images
   const buffer = fs.readFileSync(filePath);
-  return new NextResponse(buffer, {
+  return new Response(buffer, {
     headers: {
       'Content-Type': contentType,
+      'Content-Length': String(fileSize),
       'Cache-Control': 'public, max-age=604800',
     },
   });
