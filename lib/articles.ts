@@ -200,8 +200,12 @@ export function getBreakingArticle(): Article | null {
   const db = getDb();
   return db.prepare(`
     SELECT * FROM articles
-    WHERE (UPPER(title_en) LIKE '%BREAKING%' OR UPPER(title_ar) LIKE '%عاجل%')
-      AND published_at > datetime('now', '-2 hours')
+    WHERE (
+      category = 'breaking'
+      OR UPPER(title_en) LIKE '%BREAKING%'
+      OR UPPER(title_ar) LIKE '%عاجل%'
+    )
+    AND published_at > datetime('now', '-6 hours')
     ORDER BY published_at DESC LIMIT 1
   `).get() as Article | null;
 }
