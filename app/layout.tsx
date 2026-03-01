@@ -4,6 +4,7 @@ import Header from "@/components/Header";
 import BreakingBanner from "@/components/BreakingBanner";
 import Footer from "@/components/Footer";
 import { LanguageProvider } from "@/contexts/LanguageContext";
+import OneSignalInit from "@/components/OneSignalInit";
 import Image from "next/image";
 import Script from "next/script";
 
@@ -11,11 +12,21 @@ export const metadata: Metadata = {
   title: { default: "Qatar Standard | قطر ستاندرد", template: "%s | Qatar Standard" },
   description: "Qatar news, Gulf diplomacy, and Middle East analysis — in Arabic and English",
   metadataBase: new URL("https://qatar-standard.com"),
+  alternates: {
+    canonical: "https://qatar-standard.com",
+    languages: {
+      en: "https://qatar-standard.com",
+      ar: "https://qatar-standard.com",
+      "x-default": "https://qatar-standard.com",
+    },
+  },
   openGraph: {
     title: "Qatar Standard | قطر ستاندرد",
     description: "Qatar news, Gulf diplomacy, and Middle East analysis",
     siteName: "Qatar Standard",
     type: "website",
+    locale: "en_US",
+    alternateLocale: "ar_QA",
     images: [{ url: "/qatar-standard-logo.png", width: 500, height: 500 }],
   },
   twitter: {
@@ -38,6 +49,16 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
           href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700;900&family=Inter:wght@400;500;600;700&display=swap"
           rel="stylesheet"
         />
+        {/* Organization schema */}
+        <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify({
+          '@context': 'https://schema.org',
+          '@type': 'NewsMediaOrganization',
+          name: 'Qatar Standard',
+          alternateName: 'قطر ستاندرد',
+          url: 'https://qatar-standard.com',
+          logo: { '@type': 'ImageObject', url: 'https://qatar-standard.com/qatar-standard-logo.png', width: 500, height: 500 },
+          sameAs: ['https://twitter.com/QatarStandard'],
+        }) }} />
         {/* Google AdSense */}
         <Script
           async
@@ -64,6 +85,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
           />
         </div>
         <LanguageProvider>
+          <OneSignalInit />
           <BreakingBanner />
           <Header />
           <main id="main-content" className="min-h-screen">{children}</main>

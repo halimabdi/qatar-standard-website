@@ -20,7 +20,14 @@ export default function BreakingBanner() {
     fetch('/api/articles?limit=5&breaking=true')
       .then(r => r.json())
       .then(data => {
-        if (data.articles?.length) setArticles(data.articles);
+        if (data.articles?.length) {
+          setArticles(data.articles);
+          const latest = data.articles[0];
+          const lastSeen = localStorage.getItem('qs-last-breaking-slug');
+          if (latest.slug !== lastSeen) {
+            localStorage.setItem('qs-last-breaking-slug', latest.slug);
+          }
+        }
       })
       .catch(() => {});
   }, []);

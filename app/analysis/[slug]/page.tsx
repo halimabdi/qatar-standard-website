@@ -16,27 +16,33 @@ export async function generateMetadata(
 
   const description = post.custom_excerpt || post.excerpt || '';
   const image = post.feature_image || '/qatar-standard-logo.png';
+  const imageUrl = image.startsWith('/') ? `${SITE_URL}${image}` : image;
   const url = `${SITE_URL}/analysis/${slug}`;
 
   return {
     title: post.title,
     description,
-    alternates: { canonical: url },
+    alternates: {
+      canonical: url,
+      languages: { en: url, ar: url, 'x-default': url },
+    },
     openGraph: {
       title: post.title,
       description,
       url,
-      type: 'article',
-      publishedTime: post.published_at,
-      siteName: 'Qatar Standard',
-      images: [{ url: image.startsWith('/') ? `${SITE_URL}${image}` : image, width: 1200, height: 630 }],
+      type:             'article',
+      publishedTime:    post.published_at,
+      siteName:         'Qatar Standard',
+      locale:           'en_US',
+      alternateLocale:  'ar_QA',
+      images: [{ url: imageUrl, width: 1200, height: 630, alt: post.title }],
     },
     twitter: {
       card: 'summary_large_image',
       site: '@QatarStandard',
       title: post.title,
       description,
-      images: [image.startsWith('/') ? `${SITE_URL}${image}` : image],
+      images: [imageUrl],
     },
   };
 }
@@ -50,5 +56,34 @@ export default async function Page({ params }: { params: Promise<{ slug: string 
   if (!post) notFound();
 
   const relatedPosts = related.filter(p => p.slug !== slug).slice(0, 3);
-  return <AnalysisDetail post={post} related={relatedPosts} />;
+
+  const imageUrl = post.feature_image
+    ? (post.feature_image.startsWith('/') ? `${SITE_URL}${post.feature_image}` : post.feature_image)
+    : `${SITE_URL}/qatar-standard-logo.png`;
+
+  const jsonLd = {
+    '@context': 'https://schema.org',
+    '@type': 'NewsArticle',
+    headline: post.title,
+    description: post.custom_excerpt || post.excerpt || '',
+    image: [imageUrl],
+    datePublished: post.published_at,
+    dateModified: post.published_at,
+    author: { '@type': 'Organization', name: 'Qatar Standard', url: SITE_URL },
+    publisher: {
+      '@type': 'Organization',
+      name: 'Qatar Standard',
+      url: SITE_URL,
+      logo: { '@type': 'ImageObject', url: `${SITE_URL}/qatar-standard-logo.png`, width: 500, height: 500 },
+    },
+    mainEntityOfPage: { '@type': 'WebPage', '@id': `${SITE_URL}/analysis/${slug}` },
+    url: `${SITE_URL}/analysis/${slug}`,
+  };
+
+  return (
+    <>
+      <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }} />
+      <AnalysisDetail post={post} related={relatedPosts} />
+    </>
+  );
 }

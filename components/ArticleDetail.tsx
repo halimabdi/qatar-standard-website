@@ -86,31 +86,8 @@ export default function ArticleDetail({ article, related, mostRead = [] }: Props
   const altDir    = isAr ? 'ltr' : 'rtl';
   const altParas  = altBody.split('\n').filter(Boolean);
 
-  // JSON-LD for Google News / Search
-  const jsonLd = {
-    '@context': 'https://schema.org',
-    '@type': 'NewsArticle',
-    headline: title,
-    description: article.excerpt_en || article.excerpt_ar || '',
-    image: heroImg ? (heroImg.startsWith('/') ? `https://qatar-standard.com${heroImg}` : heroImg) : undefined,
-    datePublished: article.published_at,
-    dateModified: article.published_at,
-    author: { '@type': 'Organization', name: 'Qatar Standard' },
-    publisher: {
-      '@type': 'Organization',
-      name: 'Qatar Standard',
-      logo: { '@type': 'ImageObject', url: 'https://qatar-standard.com/qatar-standard-logo.png' },
-    },
-    mainEntityOfPage: { '@type': 'WebPage', '@id': `https://qatar-standard.com/article/${article.slug}` },
-    inLanguage: isAr ? 'ar' : 'en',
-    keywords: [catLabel, ...(article.speaker_name ? [article.speaker_name] : [])],
-    wordCount: body.split(/\s+/).length,
-  };
-
   return (
     <div className="max-w-7xl mx-auto px-4 py-8">
-      {/* JSON-LD */}
-      <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }} />
 
       <div className="grid grid-cols-1 lg:grid-cols-4 gap-8">
 

@@ -2,3 +2,4 @@ User-agent: *
 Allow: /
 
 Sitemap: https://qatar-standard.com/sitemap.xml
+Sitemap: https://qatar-standard.com/feed.xml

@@ -463,7 +463,7 @@ Rules:
         role: 'user',
         content: `Title: ${title}\n${speakerNoteEN}\n${contextNoteEN}\nTweet: ${tweet_en || tweet_ar || title}${sourceNoteEN}\n\nWrite the article:`,
       },
-    ]),
+    ], { large: false }),
   ]);
 
   return { body_ar: arRes, body_en: enRes };
@@ -482,7 +482,7 @@ async function editorAgent(body_ar: string, body_en: string): Promise<{ body_ar:
           content: `أنت مدقق لغوي. راجع المقال العربي وأصلح: أي تعابير ذكاء اصطناعي مبتذلة، تكرار، وعناوين مرقّمة. أعد النص فقط بدون تعليق.`,
         },
         { role: 'user', content: body_ar },
-      ], { temperature: 0.2, large: false }),
+      ], { temperature: 0.2, large: true }),
       callLLM([
         {
           role: 'system',
