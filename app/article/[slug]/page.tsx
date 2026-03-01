@@ -3,7 +3,7 @@ import ArticleDetail from '@/components/ArticleDetail';
 import { notFound } from 'next/navigation';
 import type { Metadata } from 'next';
 
-export const revalidate = 60;
+export const dynamic = 'force-dynamic';
 
 const SITE_URL = 'https://qatar-standard.com';
 

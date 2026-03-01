@@ -42,16 +42,16 @@ export function getArticles(opts: {
   const { limit = 20, offset = 0, category, untweetedOnly } = opts;
 
   if (untweetedOnly) {
-    // Only articles from last 2 hours that haven't been tweeted yet
+    // Only articles from last 1 hour that haven't been tweeted yet
     const base = `SELECT * FROM articles
       WHERE tweeted_at IS NULL
-        AND published_at > datetime('now', '-2 hours')
+        AND published_at > datetime('now', '-1 hours')
       ORDER BY published_at ASC LIMIT ? OFFSET ?`;
     if (category && category !== 'all') {
       return db.prepare(
         `SELECT * FROM articles
           WHERE tweeted_at IS NULL
-            AND published_at > datetime('now', '-2 hours')
+            AND published_at > datetime('now', '-1 hours')
             AND category = ?
           ORDER BY published_at ASC LIMIT ? OFFSET ?`
       ).all(category, limit, offset) as Article[];
