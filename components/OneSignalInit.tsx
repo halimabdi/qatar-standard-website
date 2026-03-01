@@ -13,7 +13,6 @@ export default function OneSignalInit() {
         await OneSignal.init({
           appId,
           serviceWorkerParam: { scope: '/' },
-          notifyButton: { enable: false },
           promptOptions: {
             slidedown: {
               prompts: [
