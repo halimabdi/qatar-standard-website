@@ -19,11 +19,11 @@ export default function AnalysisPage({ posts }: Props) {
   const { lang } = useLang();
   const isAr = lang === 'ar';
 
-  const heading    = isAr ? 'تحليلات' : 'Analysis';
+  const heading    = isAr ? 'تحليلات وافتتاحيات' : 'Analysis & Editorials';
   const subheading = isAr
-    ? 'تحليلات معمّقة في السياسة القطرية والدبلوماسية الخليجية وشؤون الشرق الأوسط'
-    : 'In-depth analysis of Qatar diplomacy, Gulf geopolitics, and Middle East affairs';
-  const readMore   = isAr ? 'اقرأ التحليل' : 'Read Analysis';
+    ? 'تحليلات معمّقة وافتتاحيات في السياسة القطرية والدبلوماسية الخليجية وشؤون الشرق الأوسط'
+    : 'In-depth analysis and editorials on Qatar diplomacy, Gulf geopolitics, and Middle East affairs';
+  const readMore   = isAr ? 'اقرأ المزيد' : 'Read More';
   const minRead    = isAr ? 'د قراءة' : 'min read';
   const noContent  = isAr ? 'لا توجد تحليلات بعد.' : 'No analysis pieces published yet.';
   const byLabel    = isAr ? 'بقلم تحرير قطر ستاندرد' : 'Qatar Standard Editorial';
