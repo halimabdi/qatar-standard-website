@@ -1,7 +1,7 @@
 'use client';
 import Link from 'next/link';
 import Image from 'next/image';
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useLang } from '@/contexts/LanguageContext';
 import SearchBar from './SearchBar';
 
@@ -19,18 +19,41 @@ const NAV = [
 export default function Header() {
   const { lang, setLang } = useLang();
   const [mobileOpen, setMobileOpen] = useState(false);
+  const [dohaTime, setDohaTime] = useState('');
+  const [temp, setTemp] = useState<number | null>(null);
   const isAr = lang === 'ar';
 
   const dateStr = new Date().toLocaleDateString(isAr ? 'ar-QA' : 'en-US', {
     weekday: 'long', year: 'numeric', month: 'long', day: 'numeric',
   });
 
+  useEffect(() => {
+    const update = () => setDohaTime(new Date().toLocaleTimeString('en-US', {
+      timeZone: 'Asia/Qatar', hour: '2-digit', minute: '2-digit', hour12: false,
+    }));
+    update();
+    const id = setInterval(update, 30000);
+    return () => clearInterval(id);
+  }, []);
+
+  useEffect(() => {
+    fetch('https://api.open-meteo.com/v1/forecast?latitude=25.2854&longitude=51.531&current=temperature_2m')
+      .then(r => r.json())
+      .then(d => setTemp(Math.round(d.current?.temperature_2m)))
+      .catch(() => {});
+  }, []);
+
   return (
     <header className="bg-white border-b border-gray-200 sticky top-0 z-50 shadow-sm">
       {/* Top bar */}
       <div className="bg-maroon-800 text-white text-xs py-1 px-4">
         <div className="max-w-7xl mx-auto flex justify-between items-center">
-          <span>{dateStr}</span>
+          <span>
+            {dateStr}
+            {dohaTime && (
+              <> &nbsp;·&nbsp; {isAr ? 'الدوحة' : 'Doha'} {temp !== null ? `${temp}°C · ` : '· '}{dohaTime}</>
+            )}
+          </span>
           <span className="font-semibold tracking-wide">
             {isAr ? 'قطر ستاندرد | Qatar Standard' : 'Qatar Standard | قطر ستاندرد'}
           </span>

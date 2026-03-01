@@ -12,21 +12,37 @@ interface BreakingArticle {
 export default function BreakingBanner() {
   const { lang } = useLang();
   const isAr = lang === 'ar';
-  const [article, setArticle] = useState<BreakingArticle | null>(null);
+  const [articles, setArticles] = useState<BreakingArticle[]>([]);
+  const [index, setIndex] = useState(0);
+  const [visible, setVisible] = useState(true);
 
   useEffect(() => {
-    fetch('/api/articles?limit=1&breaking=true')
+    fetch('/api/articles?limit=5&breaking=true')
       .then(r => r.json())
       .then(data => {
-        const a = data.articles?.[0];
-        if (a) setArticle(a);
+        if (data.articles?.length) setArticles(data.articles);
       })
       .catch(() => {});
   }, []);
 
-  if (!article) return null;
+  useEffect(() => {
+    if (articles.length <= 1) return;
+    const id = setInterval(() => {
+      setVisible(false);
+      setTimeout(() => {
+        setIndex(i => (i + 1) % articles.length);
+        setVisible(true);
+      }, 400);
+    }, 5000);
+    return () => clearInterval(id);
+  }, [articles.length]);
 
-  const title = isAr ? (article.title_ar || article.title_en) : (article.title_en || article.title_ar);
+  if (!articles.length) return null;
+
+  const article = articles[index];
+  const title = isAr
+    ? (article.title_ar || article.title_en)
+    : (article.title_en || article.title_ar);
 
   return (
     <div className="bg-red-700 text-white py-2 px-4">
@@ -34,9 +50,19 @@ export default function BreakingBanner() {
         <span className="bg-white text-red-700 px-2 py-0.5 rounded text-xs font-black uppercase shrink-0">
           {isAr ? 'عاجل' : 'Breaking'}
         </span>
-        <Link href={'/article/' + article.slug} className="truncate hover:underline font-medium" dir={isAr ? 'rtl' : 'ltr'}>
-          {title}
-        </Link>
+        {articles.length > 1 && (
+          <span className="text-red-200 text-xs shrink-0 font-mono">{index + 1}/{articles.length}</span>
+        )}
+        <div className="overflow-hidden flex-1">
+          <Link
+            href={'/article/' + article.slug}
+            className="block truncate hover:underline font-medium transition-opacity duration-300"
+            style={{ opacity: visible ? 1 : 0 }}
+            dir={isAr ? 'rtl' : 'ltr'}
+          >
+            {title}
+          </Link>
+        </div>
       </div>
     </div>
   );

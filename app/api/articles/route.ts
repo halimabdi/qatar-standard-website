@@ -20,9 +20,8 @@ export async function GET(req: NextRequest) {
 
   let articles;
   if (breaking) {
-    const { getBreakingArticle } = await import('@/lib/articles');
-    const a = getBreakingArticle();
-    articles = a ? [a] : [];
+    const { getBreakingArticles } = await import('@/lib/articles');
+    articles = getBreakingArticles(limit);
   } else {
     articles = getArticles({ limit, offset, category, untweetedOnly });
   }
