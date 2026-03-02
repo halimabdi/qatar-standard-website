@@ -55,7 +55,7 @@ export default function BreakingBanner() {
     <div className="bg-red-700 text-white py-2 px-4">
       <div className="max-w-7xl mx-auto flex items-center gap-3 text-sm">
         <span className="bg-white text-red-700 px-2 py-0.5 rounded text-xs font-black uppercase shrink-0">
-          {isAr ? 'عاجل' : 'Breaking'}
+          {isAr ? 'عاجل' : 'BREAKING'}
         </span>
         {articles.length > 1 && (
           <span className="text-red-200 text-xs shrink-0 font-mono">{index + 1}/{articles.length}</span>

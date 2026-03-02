@@ -11,6 +11,7 @@ export const CATEGORIES_AR: Record<string, string> = {
   media:     'إعلام',
   turkey:    'تركيا',
   africa:    'أفريقيا',
+  breaking:  'عاجل',
 };
 
 export const CATEGORIES_EN: Record<string, string> = {
@@ -24,6 +25,7 @@ export const CATEGORIES_EN: Record<string, string> = {
   media:     'Media',
   turkey:    'Turkey',
   africa:    'Africa',
+  breaking:  'BREAKING',
 };
 
 export const CATEGORY_KEYS = Object.keys(CATEGORIES_EN);
@@ -82,6 +84,10 @@ export const CATEGORY_IMAGES: Record<string, string[]> = {
   media: [
     '/curated/aljazeera_hq.jpg',
     '/curated/press_conference.jpg',
+  ],
+  breaking: [
+    '/curated/doha_skyline.jpg',
+    '/curated/diplomacy_summit.jpg',
   ],
   general: [
     '/curated/doha_skyline.jpg',
