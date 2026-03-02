@@ -29,6 +29,9 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     lastModified:    new Date(a.published_at),
     changeFrequency: 'weekly' as const,
     priority:        0.8,
+    ...(a.image_url ? {
+      images: [a.image_url.startsWith('/') ? `${SITE_URL}${a.image_url}` : a.image_url],
+    } : {}),
   }));
 
   const analysisPages: MetadataRoute.Sitemap = ghostPosts.map(p => ({

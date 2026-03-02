@@ -24,7 +24,7 @@ export async function generateMetadata(
     description,
     alternates: {
       canonical: url,
-      languages: { en: url, ar: url, 'x-default': url },
+      languages: { en: url, 'x-default': url },
     },
     openGraph: {
       title: post.title,
@@ -64,25 +64,41 @@ export default async function Page({ params }: { params: Promise<{ slug: string 
   const jsonLd = {
     '@context': 'https://schema.org',
     '@type': 'NewsArticle',
+    '@id': `${SITE_URL}/analysis/${slug}#article`,
     headline: post.title,
     description: post.custom_excerpt || post.excerpt || '',
     image: [imageUrl],
+    thumbnailUrl: imageUrl,
     datePublished: post.published_at,
     dateModified: post.published_at,
-    author: { '@type': 'Organization', name: 'Qatar Standard', url: SITE_URL },
+    author: { '@type': 'Organization', '@id': `${SITE_URL}/#organization`, name: 'Qatar Standard' },
     publisher: {
-      '@type': 'Organization',
+      '@type': 'NewsMediaOrganization',
+      '@id': `${SITE_URL}/#organization`,
       name: 'Qatar Standard',
-      url: SITE_URL,
       logo: { '@type': 'ImageObject', url: `${SITE_URL}/qatar-standard-logo.png`, width: 500, height: 500 },
     },
     mainEntityOfPage: { '@type': 'WebPage', '@id': `${SITE_URL}/analysis/${slug}` },
     url: `${SITE_URL}/analysis/${slug}`,
+    isAccessibleForFree: true,
+    inLanguage: 'en',
+    articleSection: post.primary_tag?.name || 'Analysis',
+  };
+
+  const breadcrumbLd = {
+    '@context': 'https://schema.org',
+    '@type': 'BreadcrumbList',
+    itemListElement: [
+      { '@type': 'ListItem', position: 1, name: 'Home', item: SITE_URL },
+      { '@type': 'ListItem', position: 2, name: 'Analysis & Editorials', item: `${SITE_URL}/analysis` },
+      { '@type': 'ListItem', position: 3, name: post.title, item: `${SITE_URL}/analysis/${slug}` },
+    ],
   };
 
   return (
     <>
-      <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }} />
+      <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd).replace(/</g, '\\u003c') }} />
+      <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(breadcrumbLd).replace(/</g, '\\u003c') }} />
       <AnalysisDetail post={post} related={relatedPosts} />
     </>
   );

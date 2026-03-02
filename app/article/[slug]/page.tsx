@@ -25,7 +25,7 @@ export async function generateMetadata(
     description,
     alternates: {
       canonical: url,
-      languages: { en: url, ar: url, 'x-default': url },
+      languages: { en: url, 'x-default': url },
     },
     openGraph: {
       title,
@@ -69,31 +69,54 @@ export default async function ArticlePage({ params }: { params: Promise<{ slug: 
     ? (article.image_url.startsWith('/') ? `${SITE_URL}${article.image_url}` : article.image_url)
     : `${SITE_URL}/qatar-standard-logo.png`;
 
+  const hasRealImage = imageUrl !== `${SITE_URL}/qatar-standard-logo.png`;
+
   const jsonLd = {
     '@context': 'https://schema.org',
     '@type': 'NewsArticle',
-    headline: (article.title_en || article.title_ar || '').trim(),
+    '@id': `${SITE_URL}/article/${article.slug}#article`,
+    headline: (article.title_en || article.title_ar || '').trim().slice(0, 110),
     description: article.excerpt_en || article.excerpt_ar || '',
-    image: [imageUrl],
+    image: hasRealImage
+      ? [
+          { '@type': 'ImageObject', url: imageUrl, width: 1200, height: 675 },
+          { '@type': 'ImageObject', url: imageUrl, width: 1200, height: 900 },
+          { '@type': 'ImageObject', url: imageUrl, width: 1200, height: 1200 },
+        ]
+      : [`${SITE_URL}/qatar-standard-logo.png`],
+    thumbnailUrl: imageUrl,
     datePublished: article.published_at,
     dateModified: article.published_at,
     author: article.speaker_name
       ? { '@type': 'Person', name: article.speaker_name, jobTitle: article.speaker_title || undefined }
-      : { '@type': 'Organization', name: 'Qatar Standard', url: SITE_URL },
+      : { '@type': 'Organization', '@id': `${SITE_URL}/#organization`, name: 'Qatar Standard' },
     publisher: {
-      '@type': 'Organization',
+      '@type': 'NewsMediaOrganization',
+      '@id': `${SITE_URL}/#organization`,
       name: 'Qatar Standard',
-      url: SITE_URL,
       logo: { '@type': 'ImageObject', url: `${SITE_URL}/qatar-standard-logo.png`, width: 500, height: 500 },
     },
     mainEntityOfPage: { '@type': 'WebPage', '@id': `${SITE_URL}/article/${article.slug}` },
-    inLanguage: article.title_en ? ['ar', 'en'] : ['ar'],
+    inLanguage: article.title_en ? ['en', 'ar'] : ['ar'],
     url: `${SITE_URL}/article/${article.slug}`,
+    isAccessibleForFree: true,
+    articleSection: CATEGORIES[article.category] || article.category,
+  };
+
+  const breadcrumbLd = {
+    '@context': 'https://schema.org',
+    '@type': 'BreadcrumbList',
+    itemListElement: [
+      { '@type': 'ListItem', position: 1, name: 'Home', item: SITE_URL },
+      { '@type': 'ListItem', position: 2, name: CATEGORIES[article.category] || article.category, item: `${SITE_URL}/category/${article.category}` },
+      { '@type': 'ListItem', position: 3, name: (article.title_en || article.title_ar || '').trim(), item: `${SITE_URL}/article/${article.slug}` },
+    ],
   };
 
   return (
     <>
-      <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }} />
+      <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd).replace(/</g, '\\u003c') }} />
+      <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(breadcrumbLd).replace(/</g, '\\u003c') }} />
       <ArticleDetail article={article} related={related} mostRead={mostRead} />
     </>
   );

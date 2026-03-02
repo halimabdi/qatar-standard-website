@@ -1,5 +1,27 @@
 User-agent: *
 Allow: /
+Disallow: /api/
+Disallow: /_next/
+Disallow: /admin/
+
+# Block AI training crawlers
+User-agent: GPTBot
+Disallow: /
+
+User-agent: CCBot
+Disallow: /
+
+User-agent: anthropic-ai
+Disallow: /
+
+User-agent: Claude-Web
+Disallow: /
+
+User-agent: Bytespider
+Disallow: /
+
+User-agent: meta-externalagent
+Disallow: /
 
 Sitemap: https://qatar-standard.com/sitemap.xml
-Sitemap: https://qatar-standard.com/feed.xml
+Sitemap: https://qatar-standard.com/news-sitemap.xml

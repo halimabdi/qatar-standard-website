@@ -16,8 +16,10 @@ export const metadata: Metadata = {
     canonical: "https://qatar-standard.com",
     languages: {
       en: "https://qatar-standard.com",
-      ar: "https://qatar-standard.com",
       "x-default": "https://qatar-standard.com",
+    },
+    types: {
+      "application/rss+xml": "https://qatar-standard.com/feed.xml",
     },
   },
   openGraph: {
@@ -27,7 +29,7 @@ export const metadata: Metadata = {
     type: "website",
     locale: "en_US",
     alternateLocale: "ar_QA",
-    images: [{ url: "/qatar-standard-logo.png", width: 500, height: 500 }],
+    images: [{ url: "/qatar-standard-logo.png", width: 500, height: 500, alt: "Qatar Standard" }],
   },
   twitter: {
     card: "summary_large_image",
@@ -37,11 +39,22 @@ export const metadata: Metadata = {
     icon: "/qatar-standard-logo.png",
     apple: "/qatar-standard-logo.png",
   },
+  robots: {
+    index: true,
+    follow: true,
+    googleBot: {
+      index: true,
+      follow: true,
+      "max-image-preview": "large",
+      "max-snippet": -1,
+      "max-video-preview": -1,
+    },
+  },
 };
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
-    <html lang="en">
+    <html lang="en" dir="auto">
       <head>
         <link rel="preconnect" href="https://fonts.googleapis.com" />
         <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="anonymous" />
@@ -49,16 +62,53 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
           href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700;900&family=Inter:wght@400;500;600;700&display=swap"
           rel="stylesheet"
         />
-        {/* Organization schema */}
+        {/* NewsMediaOrganization schema */}
         <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify({
           '@context': 'https://schema.org',
           '@type': 'NewsMediaOrganization',
+          '@id': 'https://qatar-standard.com/#organization',
           name: 'Qatar Standard',
           alternateName: 'قطر ستاندرد',
           url: 'https://qatar-standard.com',
-          logo: { '@type': 'ImageObject', url: 'https://qatar-standard.com/qatar-standard-logo.png', width: 500, height: 500 },
-          sameAs: ['https://twitter.com/QatarStandard'],
-        }) }} />
+          logo: {
+            '@type': 'ImageObject',
+            '@id': 'https://qatar-standard.com/#logo',
+            url: 'https://qatar-standard.com/qatar-standard-logo.png',
+            width: 500,
+            height: 500,
+            caption: 'Qatar Standard',
+          },
+          image: 'https://qatar-standard.com/qatar-standard-logo.png',
+          description: 'Qatar news, Gulf diplomacy, and Middle East analysis — in Arabic and English',
+          inLanguage: ['en', 'ar'],
+          foundingDate: '2024',
+          areaServed: ['QA', 'AE', 'SA', 'KW', 'BH', 'OM'],
+          masthead: 'https://qatar-standard.com/about',
+          publishingPrinciples: 'https://qatar-standard.com/about',
+          sameAs: [
+            'https://twitter.com/QatarStandard',
+            'https://x.com/QatarStandard',
+          ],
+        }).replace(/</g, '\\u003c') }} />
+        {/* WebSite schema with SearchAction */}
+        <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify({
+          '@context': 'https://schema.org',
+          '@type': 'WebSite',
+          '@id': 'https://qatar-standard.com/#website',
+          name: 'Qatar Standard',
+          alternateName: 'قطر ستاندرد',
+          url: 'https://qatar-standard.com',
+          publisher: { '@id': 'https://qatar-standard.com/#organization' },
+          inLanguage: ['en', 'ar'],
+          potentialAction: {
+            '@type': 'SearchAction',
+            target: {
+              '@type': 'EntryPoint',
+              urlTemplate: 'https://qatar-standard.com/?q={search_term_string}',
+            },
+            'query-input': 'required name=search_term_string',
+          },
+        }).replace(/</g, '\\u003c') }} />
         {/* Google AdSense */}
         <Script
           async
@@ -81,7 +131,6 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
             className="w-full h-full object-cover"
             style={{ objectPosition: 'center 65%' }}
             priority
-            unoptimized
           />
         </div>
         <LanguageProvider>
