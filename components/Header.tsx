@@ -13,6 +13,7 @@ const NAV = [
   { href: '/category/gulf',      en: 'Gulf',       ar: 'خليج' },
   { href: '/category/politics',  en: 'Politics',   ar: 'سياسة' },
   { href: '/category/africa',    en: 'Africa',     ar: 'أفريقيا' },
+  { href: '/category/technology', en: 'Technology', ar: 'تكنولوجيا' },
   { href: '/analysis',           en: 'Analysis',   ar: 'تحليلات' },
 ];
 

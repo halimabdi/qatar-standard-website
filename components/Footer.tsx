@@ -17,6 +17,7 @@ export default function Footer() {
         ['/category/gulf', 'خليج'],
         ['/category/politics', 'سياسة'],
         ['/category/africa', 'أفريقيا'],
+        ['/category/technology', 'تكنولوجيا'],
         ['/analysis', 'تحليلات'],
       ]
     : [
@@ -27,6 +28,7 @@ export default function Footer() {
         ['/category/gulf', 'Gulf'],
         ['/category/politics', 'Politics'],
         ['/category/africa', 'Africa'],
+        ['/category/technology', 'Technology'],
         ['/analysis', 'Analysis'],
       ];
 

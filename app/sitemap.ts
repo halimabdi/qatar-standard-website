@@ -22,6 +22,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     { url: `${SITE_URL}/category/politics`,    lastModified: new Date(), changeFrequency: 'daily',   priority: 0.8 },
     { url: `${SITE_URL}/category/africa`,      lastModified: new Date(), changeFrequency: 'daily',   priority: 0.7 },
     { url: `${SITE_URL}/category/media`,       lastModified: new Date(), changeFrequency: 'weekly',  priority: 0.7 },
+    { url: `${SITE_URL}/category/technology`,  lastModified: new Date(), changeFrequency: 'daily',   priority: 0.7 },
   ];
 
   const articlePages: MetadataRoute.Sitemap = articles.map(a => ({

@@ -12,6 +12,7 @@ export const CATEGORIES_AR: Record<string, string> = {
   turkey:    'تركيا',
   africa:    'أفريقيا',
   breaking:  'عاجل',
+  technology: 'تكنولوجيا',
 };
 
 export const CATEGORIES_EN: Record<string, string> = {
@@ -26,6 +27,7 @@ export const CATEGORIES_EN: Record<string, string> = {
   turkey:    'Turkey',
   africa:    'Africa',
   breaking:  'BREAKING',
+  technology: 'Technology',
 };
 
 export const CATEGORY_KEYS = Object.keys(CATEGORIES_EN);
@@ -88,6 +90,12 @@ export const CATEGORY_IMAGES: Record<string, string[]> = {
   breaking: [
     '/curated/doha_skyline.jpg',
     '/curated/diplomacy_summit.jpg',
+  ],
+  technology: [
+    '/curated/tech_innovation.jpg',
+    '/curated/tech_digital.jpg',
+    '/curated/tech_ai.jpg',
+    '/curated/qncc_doha_forum.jpg',
   ],
   general: [
     '/curated/doha_skyline.jpg',
