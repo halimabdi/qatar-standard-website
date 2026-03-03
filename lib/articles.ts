@@ -168,6 +168,7 @@ export const CATEGORIES: Record<string, string> = {
   media:      'إعلام',
   africa:     'أفريقيا',
   turkey:     'تركيا',
+  technology: 'تكنولوجيا',
 };
 
 
